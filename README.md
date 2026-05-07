@@ -38,6 +38,55 @@ Then point your MCP client at `http://localhost:5089/mcp`.
 claude mcp add --transport http azdo http://localhost:5089/mcp
 ```
 
+## Docker
+
+A `Dockerfile` is provided for HTTP-mode hosting:
+
+```sh
+docker build -t azdomcp .
+docker run --rm -p 5089:5089 \
+    -e AZDOMCP_AzureDevOps__OrganizationUrl="https://devops.your-domain/DefaultCollection" \
+    -e AZDOMCP_AzureDevOps__PersonalAccessToken="$AZDO_PAT" \
+    -e AZDOMCP_AzureDevOps__DefaultProject="MyProject" \
+    azdomcp
+```
+
+The container listens on `http://0.0.0.0:5089/mcp`. Configure via the `AZDOMCP_` env-var prefix using ASP.NET Core's `__` separator for nested keys (e.g. `AZDOMCP_AzureDevOps__ReadOnly=false`). Read-only mode is on by default.
+
+Logs go to stdout/stderr (Serilog console sink). To persist the rolling file logs as well, mount a volume:
+
+```sh
+docker run --rm -p 5089:5089 -v azdomcp-logs:/app/logs ...
+```
+
+## Running as a Windows Service
+
+The host detects when it's launched by the Service Control Manager and switches to service mode automatically (config and logs resolve from the executable directory, not the SCM's `C:\Windows\System32` working directory).
+
+Publish a self-contained build, then register it with `sc.exe` (run as Administrator):
+
+```powershell
+dotnet publish -c Release -r win-x64 --self-contained false -o C:\Services\AzureDevopsMCPSharp
+
+sc.exe create AzureDevopsMCPSharp `
+    binPath= "C:\Services\AzureDevopsMCPSharp\AzureDevopsMCPSharp.exe" `
+    start= auto `
+    DisplayName= "Azure DevOps MCP (C#)"
+sc.exe description AzureDevopsMCPSharp "MCP server bridging Claude Code to on-prem Azure DevOps Server."
+sc.exe start AzureDevopsMCPSharp
+```
+
+Put credentials in `C:\Services\AzureDevopsMCPSharp\appsettings.Local.json` (or set `AZDOMCP_AzureDevOps__PersonalAccessToken` as a machine-level env var) — never in `appsettings.json`, which is checked in.
+
+To remove:
+
+```powershell
+sc.exe stop AzureDevopsMCPSharp
+sc.exe delete AzureDevopsMCPSharp
+```
+
+Logs land in `<install-dir>\logs\azdomcp-*.log`.
+
 ## Read-only mode
 
 Read-only is **on by default**. To enable write tools, set `AzureDevOps:ReadOnly=false` (and understand the blast radius — agents can then create/edit work items, repos, etc.).

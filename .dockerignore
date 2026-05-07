@@ -1,0 +1,17 @@
+.git
+.github
+.vs
+.vscode
+.dotnet
+.idea
+**/bin
+**/obj
+logs
+TestResults
+coverage
+appsettings.Local.json
+appsettings.Development.json
+appsettings.*.Local.json
+secrets.json
+.env
+.env.*

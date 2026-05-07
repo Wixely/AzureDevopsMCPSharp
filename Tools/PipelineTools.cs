@@ -190,6 +190,52 @@ public static class PipelineTools
         return JsonSerializer.Serialize(updated, JsonOpts.Default);
     }
 
+    [McpServerTool(Name = "list_pipeline_run_tags"),
+     Description("List the tags stamped on a single pipeline run.")]
+    public static async Task<string> ListPipelineRunTags(
+        AzureDevOpsService svc,
+        [Description("Build / run id")] int buildId,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        CancellationToken ct = default)
+    {
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<BuildHttpClient>();
+        var tags = await client.GetBuildTagsAsync(resolved, buildId, cancellationToken: ct);
+        return JsonSerializer.Serialize(tags, JsonOpts.Default);
+    }
+
+    [McpServerTool(Name = "add_pipeline_run_tags"),
+     Description("Add one or more tags to a pipeline run. Returns the resulting full tag list. Disabled when the server is in read-only mode.")]
+    public static async Task<string> AddPipelineRunTags(
+        AzureDevOpsService svc,
+        [Description("Build / run id")] int buildId,
+        [Description("Tags to add")] string[] tags,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        CancellationToken ct = default)
+    {
+        svc.EnsureWriteAllowed("add_pipeline_run_tags");
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<BuildHttpClient>();
+        var updated = await client.AddBuildTagsAsync(tags.ToList(), resolved, buildId, cancellationToken: ct);
+        return JsonSerializer.Serialize(updated, JsonOpts.Default);
+    }
+
+    [McpServerTool(Name = "remove_pipeline_run_tag"),
+     Description("Remove a single tag from a pipeline run. Returns the resulting full tag list. Disabled when the server is in read-only mode.")]
+    public static async Task<string> RemovePipelineRunTag(
+        AzureDevOpsService svc,
+        [Description("Build / run id")] int buildId,
+        [Description("Tag to remove")] string tag,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        CancellationToken ct = default)
+    {
+        svc.EnsureWriteAllowed("remove_pipeline_run_tag");
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<BuildHttpClient>();
+        var updated = await client.DeleteBuildTagAsync(resolved, buildId, tag, cancellationToken: ct);
+        return JsonSerializer.Serialize(updated, JsonOpts.Default);
+    }
+
     private static T? ParseEnumOrNull<T>(string? value) where T : struct, Enum
         => string.IsNullOrWhiteSpace(value) ? null
             : Enum.TryParse<T>(value, ignoreCase: true, out var parsed) ? parsed

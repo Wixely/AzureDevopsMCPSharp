@@ -8,6 +8,15 @@ public sealed class AzureDevOpsOptions
     public string PersonalAccessToken { get; set; } = string.Empty;
     public string? DefaultProject { get; set; }
     public bool ReadOnly { get; set; } = true;
+
+    /// <summary>
+    /// Per-operation allow/deny switches keyed by tool name (e.g. "queue_pipeline_run").
+    /// A missing entry is treated as allowed. Set an entry to false to disable that specific
+    /// write tool even when ReadOnly is false. ReadOnly=true blocks everything regardless.
+    /// Lookup is case-insensitive.
+    /// </summary>
+    public Dictionary<string, bool> Operations { get; set; }
+        = new(StringComparer.OrdinalIgnoreCase);
 }
 
 public sealed class ServerOptions

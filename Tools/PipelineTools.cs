@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 using AzureDevopsMCPSharp.Services;
 using Microsoft.TeamFoundation.Build.WebApi;
@@ -234,6 +236,232 @@ public static class PipelineTools
         var client = svc.GetClient<BuildHttpClient>();
         var updated = await client.DeleteBuildTagAsync(resolved, buildId, tag, cancellationToken: ct);
         return JsonSerializer.Serialize(updated, JsonOpts.Default);
+    }
+
+    [McpServerTool(Name = "create_pipeline"),
+     Description("Create a new YAML pipeline definition pointing at an existing repository and YAML file. Disabled when the server is in read-only mode.")]
+    public static async Task<string> CreatePipeline(
+        AzureDevOpsService svc,
+        [Description("Display name for the new pipeline")] string name,
+        [Description("Repository name (must already exist in the project)")] string repositoryName,
+        [Description("Path to the YAML file in the repo, e.g. 'azure-pipelines.yml' or '/src/build/ci.yml'")] string yamlPath,
+        [Description("Agent queue id to run on (from list_agent_pools / project queues)")] int agentQueueId,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        [Description("Folder path, e.g. '\\\\MyFolder\\\\Sub'. Defaults to root ('\\\\').")] string folderPath = "\\",
+        [Description("Default branch ref. Defaults to 'refs/heads/main'.")] string defaultBranch = "refs/heads/main",
+        [Description("Repository type. Defaults to 'TfsGit' (Azure Repos Git). Other values: 'GitHub', 'Bitbucket', 'Git'.")] string repositoryType = "TfsGit",
+        CancellationToken ct = default)
+    {
+        svc.EnsureWriteAllowed("create_pipeline");
+        if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("name is required.", nameof(name));
+        if (string.IsNullOrWhiteSpace(repositoryName)) throw new ArgumentException("repositoryName is required.", nameof(repositoryName));
+        if (string.IsNullOrWhiteSpace(yamlPath)) throw new ArgumentException("yamlPath is required.", nameof(yamlPath));
+
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<BuildHttpClient>();
+
+        Guid repoId;
+        if (string.Equals(repositoryType, "TfsGit", StringComparison.OrdinalIgnoreCase))
+        {
+            var gitClient = svc.GetClient<Microsoft.TeamFoundation.SourceControl.WebApi.GitHttpClient>();
+            var repo = await gitClient.GetRepositoryAsync(resolved, repositoryName, cancellationToken: ct)
+                ?? throw new InvalidOperationException(
+                    $"Repository '{repositoryName}' not found in project '{resolved}'.");
+            repoId = repo.Id;
+        }
+        else
+        {
+            throw new NotSupportedException(
+                $"Repository type '{repositoryType}' is not yet supported by this tool — only 'TfsGit' (Azure Repos Git) is implemented.");
+        }
+
+        var definition = new BuildDefinition
+        {
+            Name = name,
+            Path = folderPath,
+            Project = new Microsoft.TeamFoundation.Core.WebApi.TeamProjectReference { Name = resolved },
+            Repository = new BuildRepository
+            {
+                Id = repoId.ToString(),
+                Name = repositoryName,
+                Type = repositoryType,
+                DefaultBranch = defaultBranch,
+            },
+            Process = new YamlProcess { YamlFilename = yamlPath },
+            Queue = new AgentPoolQueue { Id = agentQueueId },
+        };
+
+        try
+        {
+            var created = await client.CreateDefinitionAsync(definition, resolved, cancellationToken: ct);
+            return JsonSerializer.Serialize(created, JsonOpts.Default);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"create_pipeline failed for '{name}' in project '{resolved}': {ex.Message}. " +
+                "Common causes: agent queue id wrong (use list_agent_pools to find the queue id, not pool id); " +
+                "repository or yamlPath does not exist; PAT lacks 'Build: read & execute' or the user lacks 'Edit build pipeline' on the folder.",
+                ex);
+        }
+    }
+
+    [McpServerTool(Name = "rename_pipeline"),
+     Description("Rename an existing pipeline definition. Disabled when the server is in read-only mode.")]
+    public static async Task<string> RenamePipeline(
+        AzureDevOpsService svc,
+        [Description("Pipeline (definition) id to rename")] int definitionId,
+        [Description("New display name")] string newName,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        CancellationToken ct = default)
+    {
+        svc.EnsureWriteAllowed("rename_pipeline");
+        if (string.IsNullOrWhiteSpace(newName)) throw new ArgumentException("newName is required.", nameof(newName));
+        return await UpdatePipelineCore(svc, definitionId, project, d => d.Name = newName, "rename_pipeline", ct);
+    }
+
+    [McpServerTool(Name = "move_pipeline"),
+     Description("Move a pipeline to a different folder (e.g. '\\\\Team A\\\\CI'). Use '\\\\' for the root. Disabled when the server is in read-only mode.")]
+    public static async Task<string> MovePipeline(
+        AzureDevOpsService svc,
+        [Description("Pipeline (definition) id to move")] int definitionId,
+        [Description("New folder path, e.g. '\\\\MyFolder\\\\Sub'. Use '\\\\' for the root.")] string newFolderPath,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        CancellationToken ct = default)
+    {
+        svc.EnsureWriteAllowed("move_pipeline");
+        if (string.IsNullOrWhiteSpace(newFolderPath))
+            throw new ArgumentException("newFolderPath is required (use '\\\\' for the root).", nameof(newFolderPath));
+        return await UpdatePipelineCore(svc, definitionId, project, d => d.Path = newFolderPath, "move_pipeline", ct);
+    }
+
+    [McpServerTool(Name = "delete_pipeline"),
+     Description("Permanently delete a pipeline definition. There is no recycle bin — this cannot be undone. Disabled when the server is in read-only mode.")]
+    public static async Task<string> DeletePipeline(
+        AzureDevOpsService svc,
+        [Description("Pipeline (definition) id to delete")] int definitionId,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        CancellationToken ct = default)
+    {
+        svc.EnsureWriteAllowed("delete_pipeline");
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<BuildHttpClient>();
+        try
+        {
+            await client.DeleteDefinitionAsync(resolved, definitionId, cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"delete_pipeline failed for id {definitionId} in project '{resolved}': {ex.Message}. " +
+                "Common causes: id does not exist; PAT lacks 'Build: read & execute' or the user lacks 'Delete build pipeline' on the folder.",
+                ex);
+        }
+        return JsonSerializer.Serialize(new { deleted = true, definitionId, project = resolved }, JsonOpts.Default);
+    }
+
+    private static async Task<string> UpdatePipelineCore(
+        AzureDevOpsService svc,
+        int definitionId,
+        string? project,
+        Action<BuildDefinition> mutate,
+        string operation,
+        CancellationToken ct)
+    {
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<BuildHttpClient>();
+
+        BuildDefinition existing;
+        try
+        {
+            existing = await client.GetDefinitionAsync(resolved, definitionId, cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"{operation} failed: could not load pipeline {definitionId} in project '{resolved}'. {ex.Message}", ex);
+        }
+
+        mutate(existing);
+
+        try
+        {
+            var updated = await client.UpdateDefinitionAsync(existing, cancellationToken: ct);
+            return JsonSerializer.Serialize(updated, JsonOpts.Default);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"{operation} failed for pipeline {definitionId} in project '{resolved}': {ex.Message}. " +
+                "Common causes: PAT lacks 'Build: read & execute' write scope; user lacks 'Edit build pipeline' on the source/target folder; " +
+                "name collides with an existing pipeline in the same folder; the pipeline was modified concurrently (revision mismatch).",
+                ex);
+        }
+    }
+
+    [McpServerTool(Name = "authorize_pipeline_resource"),
+     Description("Grant a pipeline permanent permission to use a protected resource (service connection, agent queue, variable group, secure file, environment, or repository). " +
+                 "Equivalent to clicking 'Permit' on the pending-authorization banner with 'Permit permanently' enabled. Disabled when the server is in read-only mode.")]
+    public static async Task<string> AuthorizePipelineResource(
+        AzureDevOpsService svc,
+        [Description("Pipeline (build definition) id that should be allowed to use the resource")] int definitionId,
+        [Description("Resource type: endpoint (service connection), queue (agent queue), variablegroup, securefile, environment, or repository")] string resourceType,
+        [Description("Resource id. For 'endpoint'/'variablegroup'/'securefile'/'environment' this is the numeric id; for 'queue' it is the queue id (not the pool id); for 'repository' use the form '{projectId}.{repositoryId}'.")] string resourceId,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        [Description("Set false to revoke instead of grant (default true)")] bool authorized = true,
+        CancellationToken ct = default)
+    {
+        svc.EnsureWriteAllowed("authorize_pipeline_resource");
+
+        var resolvedProject = svc.ResolveProject(project);
+        var normalizedType = (resourceType ?? string.Empty).Trim().ToLowerInvariant();
+        var allowed = new[] { "endpoint", "queue", "variablegroup", "securefile", "environment", "repository" };
+        if (Array.IndexOf(allowed, normalizedType) < 0)
+        {
+            throw new ArgumentException(
+                $"Invalid resourceType '{resourceType}'. Expected one of: {string.Join(", ", allowed)}.",
+                nameof(resourceType));
+        }
+        if (string.IsNullOrWhiteSpace(resourceId))
+            throw new ArgumentException("resourceId is required.", nameof(resourceId));
+
+        var url = $"{Uri.EscapeDataString(resolvedProject)}/_apis/pipelines/pipelinepermissions/" +
+                  $"{normalizedType}/{Uri.EscapeDataString(resourceId)}?api-version=7.1-preview.1";
+
+        var payload = new
+        {
+            pipelines = new[] { new { id = definitionId, authorized } },
+        };
+
+        using var resp = await svc.RestClient.PatchAsJsonAsync(url, payload, JsonOpts.Default, ct);
+        var body = await resp.Content.ReadAsStringAsync(ct);
+        if (!resp.IsSuccessStatusCode)
+            throw BuildAuthorizationError(resp.StatusCode, body, normalizedType, resourceId, definitionId);
+
+        return body;
+    }
+
+    private static InvalidOperationException BuildAuthorizationError(
+        HttpStatusCode status, string body, string resourceType, string resourceId, int definitionId)
+    {
+        var hint = status switch
+        {
+            HttpStatusCode.Unauthorized =>
+                "PAT rejected (401). The token is invalid or expired.",
+            HttpStatusCode.Forbidden =>
+                $"PAT/user lacks permission to authorize this {resourceType} (403). " +
+                "The PAT needs the scope for this resource type (e.g. 'Service Connections: read, query & manage' for endpoints, " +
+                "'Agent Pools: read & manage' for queues, 'Environment: read & manage' for environments), " +
+                "AND the user must have Administrator role on the resource itself.",
+            HttpStatusCode.NotFound =>
+                $"Not found (404). Check that resourceType='{resourceType}' and resourceId='{resourceId}' exist in this project, " +
+                "and that pipeline id is correct. Note: 'queue' takes the queue id, not the pool id; 'repository' uses '{projectId}.{repositoryId}'.",
+            HttpStatusCode.BadRequest =>
+                "Bad request (400). The resource id format is likely wrong for this resource type.",
+            _ => $"HTTP {(int)status} {status}.",
+        };
+        return new InvalidOperationException(
+            $"authorize_pipeline_resource failed for pipeline {definitionId} on {resourceType}/{resourceId}: {hint}\nResponse body: {body}");
     }
 
     private static T? ParseEnumOrNull<T>(string? value) where T : struct, Enum

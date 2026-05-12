@@ -49,6 +49,15 @@ public sealed class AzureDevOpsService : IDisposable
                 $"Operation '{operation}' is blocked: server is running in read-only mode. " +
                 "Set AzureDevOps:ReadOnly=false to allow writes.");
         }
+
+        if (_options.Operations is { } ops
+            && ops.TryGetValue(operation, out var enabled)
+            && !enabled)
+        {
+            throw new InvalidOperationException(
+                $"Operation '{operation}' is blocked: disabled by AzureDevOps:Operations:{operation}=false. " +
+                $"Set AzureDevOps:Operations:{operation}=true to enable it.");
+        }
     }
 
     private VssConnection CreateConnection()

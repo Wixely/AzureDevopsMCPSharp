@@ -426,7 +426,7 @@ public static class PipelineTools
             throw new ArgumentException("resourceId is required.", nameof(resourceId));
 
         var url = $"{Uri.EscapeDataString(resolvedProject)}/_apis/pipelines/pipelinepermissions/" +
-                  $"{normalizedType}/{Uri.EscapeDataString(resourceId)}?api-version=7.1-preview.1";
+                  $"{normalizedType}/{Uri.EscapeDataString(resourceId)}?api-version=6.0-preview.1";
 
         var payload = new
         {
@@ -444,22 +444,26 @@ public static class PipelineTools
     private static InvalidOperationException BuildAuthorizationError(
         HttpStatusCode status, string body, string resourceType, string resourceId, int definitionId)
     {
-        var hint = status switch
-        {
-            HttpStatusCode.Unauthorized =>
-                "PAT rejected (401). The token is invalid or expired.",
-            HttpStatusCode.Forbidden =>
-                $"PAT/user lacks permission to authorize this {resourceType} (403). " +
-                "The PAT needs the scope for this resource type (e.g. 'Service Connections: read, query & manage' for endpoints, " +
-                "'Agent Pools: read & manage' for queues, 'Environment: read & manage' for environments), " +
-                "AND the user must have Administrator role on the resource itself.",
-            HttpStatusCode.NotFound =>
-                $"Not found (404). Check that resourceType='{resourceType}' and resourceId='{resourceId}' exist in this project, " +
-                "and that pipeline id is correct. Note: 'queue' takes the queue id, not the pool id; 'repository' uses '{projectId}.{repositoryId}'.",
-            HttpStatusCode.BadRequest =>
-                "Bad request (400). The resource id format is likely wrong for this resource type.",
-            _ => $"HTTP {(int)status} {status}.",
-        };
+        var versionMismatch = body?.Contains("VssVersionOutOfRangeException", StringComparison.OrdinalIgnoreCase) == true;
+        var hint = versionMismatch
+            ? "The server rejected the REST API version. This usually means the on-prem TFS/Azure DevOps Server is older than the api-version this tool sends. " +
+              "Either upgrade the server or open an issue so the tool can target a lower version."
+            : status switch
+            {
+                HttpStatusCode.Unauthorized =>
+                    "PAT rejected (401). The token is invalid or expired.",
+                HttpStatusCode.Forbidden =>
+                    $"PAT/user lacks permission to authorize this {resourceType} (403). " +
+                    "The PAT needs the scope for this resource type (e.g. 'Service Connections: read, query & manage' for endpoints, " +
+                    "'Agent Pools: read & manage' for queues, 'Environment: read & manage' for environments), " +
+                    "AND the user must have Administrator role on the resource itself.",
+                HttpStatusCode.NotFound =>
+                    $"Not found (404). Check that resourceType='{resourceType}' and resourceId='{resourceId}' exist in this project, " +
+                    "and that pipeline id is correct. Note: 'queue' takes the queue id, not the pool id; 'repository' uses '{projectId}.{repositoryId}'.",
+                HttpStatusCode.BadRequest =>
+                    "Bad request (400). The resource id format is likely wrong for this resource type.",
+                _ => $"HTTP {(int)status} {status}.",
+            };
         return new InvalidOperationException(
             $"authorize_pipeline_resource failed for pipeline {definitionId} on {resourceType}/{resourceId}: {hint}\nResponse body: {body}");
     }

@@ -10,10 +10,9 @@ public sealed class AzureDevOpsOptions
     public bool ReadOnly { get; set; } = true;
 
     /// <summary>
-    /// Per-operation allow/deny switches keyed by tool name (e.g. "queue_pipeline_run").
-    /// A missing entry is treated as allowed. Set an entry to false to disable that specific
-    /// write tool even when ReadOnly is false. ReadOnly=true blocks everything regardless.
-    /// Lookup is case-insensitive.
+    /// Per-operation allow switches keyed by tool name (e.g. "queue_pipeline_run").
+    /// A missing entry or explicit false blocks the operation; only explicit true allows it.
+    /// ReadOnly=true overrides this and blocks everything regardless. Lookup is case-insensitive.
     /// </summary>
     public Dictionary<string, bool> Operations { get; set; }
         = new(StringComparer.OrdinalIgnoreCase);

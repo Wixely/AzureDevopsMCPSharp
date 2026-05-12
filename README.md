@@ -20,7 +20,7 @@ Configure via `appsettings.json` or environment variables (env wins; use `AZDOMC
 | `AzureDevOps:PersonalAccessToken` | _(required)_ | PAT with sufficient scopes |
 | `AzureDevOps:DefaultProject` | _(none)_ | Project used when tools are called without one |
 | `AzureDevOps:ReadOnly` | `true` | When `true`, all write/delete tools are disabled |
-| `AzureDevOps:Operations:<tool_name>` | _(missing = allowed)_ | Per-tool allow/deny switch applied when `ReadOnly=false`. See [Per-operation switches](#per-operation-switches). |
+| `AzureDevOps:Operations:<tool_name>` | _(missing = blocked)_ | Per-tool allow switch applied when `ReadOnly=false`. Only explicit `true` enables a write tool. See [Per-operation switches](#per-operation-switches). |
 | `Server:Host` | `localhost` | Host to bind |
 | `Server:Port` | `5089` | HTTP port |
 | `Server:Path` | `/mcp` | MCP endpoint path |
@@ -96,23 +96,35 @@ Read-only is **on by default**. To enable write tools, set `AzureDevOps:ReadOnly
 
 Even with `ReadOnly=false`, each write tool can be individually enabled or disabled via `AzureDevOps:Operations`. This lets you grant, say, work-item updates but keep pipeline deletion off.
 
-`ReadOnly=true` overrides everything: it blocks all writes regardless of the per-op switches. `ReadOnly=false` then defers to the `Operations` map — a missing entry is treated as **allowed**, and an explicit `false` disables that one tool.
+`ReadOnly=true` overrides everything: it blocks all writes regardless of the per-op switches. `ReadOnly=false` then defers to the `Operations` map — **only an explicit `true` enables a tool**; missing entries and explicit `false` both block. This makes new write tools added in future releases opt-in by default for existing configs.
+
+All write operations ship **disabled by default** in `appsettings.json`. Opt in to the ones you want:
 
 ```json
 "AzureDevOps": {
   "ReadOnly": false,
   "Operations": {
-    "queue_pipeline_run": true,
-    "cancel_pipeline_run": true,
-    "add_pipeline_run_tags": true,
-    "remove_pipeline_run_tag": true,
-    "create_pipeline": true,
-    "rename_pipeline": true,
-    "move_pipeline": true,
+    "queue_pipeline_run": false,
+    "cancel_pipeline_run": false,
+    "add_pipeline_run_tags": false,
+    "remove_pipeline_run_tag": false,
+    "create_pipeline": false,
+    "rename_pipeline": false,
+    "move_pipeline": false,
     "delete_pipeline": false,
-    "authorize_pipeline_resource": true,
-    "create_work_item": true,
-    "update_work_item": true
+    "authorize_pipeline_resource": false,
+    "create_work_item": false,
+    "update_work_item": false,
+    "create_repository": false,
+    "rename_repository": false,
+    "delete_repository": false,
+    "delete_repo_policy": false,
+    "set_policy_enabled": false,
+    "set_repo_policy": false,
+    "set_min_reviewers_policy": false,
+    "set_bypass_push_policy_self": false,
+    "set_bypass_push_policy_group": false,
+    "set_bypass_push_policy_user": false
   }
 }
 ```
@@ -130,9 +142,19 @@ Even with `ReadOnly=false`, each write tool can be individually enabled or disab
 | `authorize_pipeline_resource` | Grant a pipeline permission to use a protected resource | |
 | `create_work_item` | Create a work item | |
 | `update_work_item` | Patch fields on a work item | |
+| `create_repository` | Create a new empty Git repository | |
+| `rename_repository` | Rename a Git repository | |
+| `delete_repository` | **Permanently** delete a Git repository | No undo. Wipes branches, history, PRs. |
+| `delete_repo_policy` | Delete a branch/repo policy configuration | |
+| `set_policy_enabled` | Toggle a policy on/off without changing its settings | |
+| `set_repo_policy` | Generic create/update for any policy type (pass type Guid + raw settings JSON) | |
+| `set_min_reviewers_policy` | Typed helper for the 'Minimum number of reviewers' policy | |
+| `set_bypass_push_policy_self` | Allow / deny / clear 'Bypass policies when pushing' for the PAT's own identity | Repo-scoped or branch-scoped. |
+| `set_bypass_push_policy_group` | Same, scoped to a named group (e.g. 'Project Administrators') | |
+| `set_bypass_push_policy_user` | Same, scoped to a single user (email / account / display name) | |
 
-When a tool is called but its operation is disabled, the server throws a clear error naming the exact setting to flip:
+When a tool is called but its operation is not explicitly enabled, the server throws a clear error naming the exact setting to flip:
 
-> `Operation 'delete_pipeline' is blocked: disabled by AzureDevOps:Operations:delete_pipeline=false. Set AzureDevOps:Operations:delete_pipeline=true to enable it.`
+> `Operation 'delete_pipeline' is blocked: not enabled in AzureDevOps:Operations (missing entries default to disabled). Set AzureDevOps:Operations:delete_pipeline=true to enable it.`
 
 Override individual switches via env var, e.g. `AZDOMCP_AzureDevOps__Operations__delete_pipeline=true`.

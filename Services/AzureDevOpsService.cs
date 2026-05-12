@@ -50,12 +50,12 @@ public sealed class AzureDevOpsService : IDisposable
                 "Set AzureDevOps:ReadOnly=false to allow writes.");
         }
 
-        if (_options.Operations is { } ops
-            && ops.TryGetValue(operation, out var enabled)
-            && !enabled)
+        var ops = _options.Operations;
+        if (ops is null || !ops.TryGetValue(operation, out var enabled) || !enabled)
         {
             throw new InvalidOperationException(
-                $"Operation '{operation}' is blocked: disabled by AzureDevOps:Operations:{operation}=false. " +
+                $"Operation '{operation}' is blocked: not enabled in AzureDevOps:Operations " +
+                $"(missing entries default to disabled). " +
                 $"Set AzureDevOps:Operations:{operation}=true to enable it.");
         }
     }

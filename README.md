@@ -1,18 +1,18 @@
 # AzureDevopsMCPSharp
 
-A standalone C# **MCP (Model Context Protocol) server** for **Azure DevOps Server / on-premises** (non-cloud) deployments. Speaks Claude Code style MCP commands over **HTTP streaming**.
+A standalone C# **MCP (Model Context Protocol) server** for **Azure DevOps Server / on-premises** (non-cloud) deployments over Streamable HTTP.
 
 ## Features
 
-- HTTP streaming MCP server (Streamable HTTP transport, compatible with Claude Code).
-- **Read-only mode by default** — safe to attach to agents without risk of mutating projects, work items, repos, or pipelines.
-- Configuration via `appsettings.json`, environment variables, or command line.
+- HTTP MCP server using the Streamable HTTP transport.
+- **Read-only mode by default** — write/delete tools stay disabled until explicitly enabled.
+- Configuration via `AzureDevopsMCPSharp.json`, environment variables, or command line.
 - Serilog logging to console and rolling files.
 - Targets Azure DevOps Server (TFS) — works against your internal `https://devops.your-domain/tfs/...` collection.
 
 ## Configuration
 
-Configure via `appsettings.json` or environment variables (env wins; use `AZDOMCP_` prefix or standard `__` separator):
+Configure via `AzureDevopsMCPSharp.json` or environment variables. Environment variables win over JSON; in Docker, use the `AZDOMCP_` prefix and `__` for nested keys:
 
 | Setting | Default | Description |
 | --- | --- | --- |
@@ -28,6 +28,8 @@ Configure via `appsettings.json` or environment variables (env wins; use `AZDOMC
 
 When `Server:Password` is set, MCP requests must provide the password as `Authorization: Bearer <password>`, the Basic auth password, or `X-MCP-Password`.
 
+Booleans use `true` or `false`; per-operation switches use keys such as `AZDOMCP_AzureDevOps__Operations__delete_pipeline=true`.
+
 ## Running
 
 ```sh
@@ -35,12 +37,6 @@ dotnet run
 ```
 
 Then point your MCP client at `http://localhost:5700/mcp`.
-
-### Claude Code
-
-```sh
-claude mcp add --transport http azdo http://localhost:5700/mcp
-```
 
 ## Docker
 
@@ -52,10 +48,11 @@ docker run --rm -p 5700:5700 \
     -e AZDOMCP_AzureDevOps__OrganizationUrl="https://devops.your-domain/DefaultCollection" \
     -e AZDOMCP_AzureDevOps__PersonalAccessToken="$AZDO_PAT" \
     -e AZDOMCP_AzureDevOps__DefaultProject="MyProject" \
+    -e AZDOMCP_Server__Password="change-me" \
     azdomcp
 ```
 
-The container listens on `http://0.0.0.0:5700/mcp`. Configure via the `AZDOMCP_` env-var prefix using ASP.NET Core's `__` separator for nested keys (e.g. `AZDOMCP_AzureDevOps__ReadOnly=false`). Read-only mode is on by default.
+The container listens on `http://0.0.0.0:5700/mcp`. Example write opt-in: `AZDOMCP_AzureDevOps__ReadOnly=false` plus an operation switch such as `AZDOMCP_AzureDevOps__Operations__delete_pipeline=true`. Read-only mode is on by default.
 
 Logs go to stdout/stderr (Serilog console sink). To persist the rolling file logs as well, mount a volume:
 
@@ -76,11 +73,11 @@ sc.exe create AzureDevopsMCPSharp `
     binPath= "C:\Services\AzureDevopsMCPSharp\AzureDevopsMCPSharp.exe" `
     start= auto `
     DisplayName= "Azure DevOps MCP (C#)"
-sc.exe description AzureDevopsMCPSharp "MCP server bridging Claude Code to on-prem Azure DevOps Server."
+sc.exe description AzureDevopsMCPSharp "MCP server for on-prem Azure DevOps Server."
 sc.exe start AzureDevopsMCPSharp
 ```
 
-Put credentials in `C:\Services\AzureDevopsMCPSharp\appsettings.Local.json` (or set `AZDOMCP_AzureDevOps__PersonalAccessToken` as a machine-level env var) — never in `appsettings.json`, which is checked in.
+Put credentials in `C:\Services\AzureDevopsMCPSharp\AzureDevopsMCPSharp.Local.json` (or set `AZDOMCP_AzureDevOps__PersonalAccessToken` as a machine-level env var) — never in `AzureDevopsMCPSharp.json`, which is checked in.
 
 To remove:
 
@@ -93,7 +90,7 @@ Logs land in `<install-dir>\logs\azdomcp-*.log`.
 
 ## Read-only mode
 
-Read-only is **on by default**. To enable write tools, set `AzureDevOps:ReadOnly=false` (and understand the blast radius — agents can then create/edit work items, repos, etc.).
+Read-only is **on by default**. To enable write tools, set `AzureDevOps:ReadOnly=false`.
 
 ## Per-operation switches
 
@@ -101,7 +98,7 @@ Even with `ReadOnly=false`, each write tool can be individually enabled or disab
 
 `ReadOnly=true` overrides everything: it blocks all writes regardless of the per-op switches. `ReadOnly=false` then defers to the `Operations` map — **only an explicit `true` enables a tool**; missing entries and explicit `false` both block. This makes new write tools added in future releases opt-in by default for existing configs.
 
-All write operations ship **disabled by default** in `appsettings.json`. Opt in to the ones you want:
+All write operations ship **disabled by default** in `AzureDevopsMCPSharp.json`. Opt in to the ones you want:
 
 ```json
 "AzureDevOps": {

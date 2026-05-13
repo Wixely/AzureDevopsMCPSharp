@@ -1,5 +1,6 @@
 using System.Net;
 using AzureDevopsMCPSharp.Configuration;
+using AzureDevopsMCPSharp.Hosting;
 using AzureDevopsMCPSharp.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -20,6 +21,10 @@ public static class Program
         // C:\Windows\System32, so resolve config and logs relative to the exe.
         var contentRoot = AppContext.BaseDirectory;
         var isService = WindowsServiceHelpers.IsWindowsService();
+        if (!isService)
+        {
+            McpSharpIcon.ApplyConsoleWindowIcon();
+        }
 
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
@@ -104,6 +109,9 @@ public static class Program
             Log.Information("Azure DevOps MCP server starting on http://{Host}:{Port}{Path} (read-only={ReadOnly}, mode={Mode}, contentRoot={ContentRoot})",
                 server.Host, server.Port, server.Path, azdo.IsReadOnly, isService ? "WindowsService" : "Console", contentRoot);
 
+            app.UseMiddleware<McpPasswordMiddleware>();
+
+            app.MapFavicon();
             app.MapGet("/healthz", () => new
             {
                 status = "ok",

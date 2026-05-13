@@ -23,6 +23,7 @@ ENV DOTNET_ENVIRONMENT=Production \
     AZDOMCP_Server__Host=0.0.0.0 \
     AZDOMCP_Server__Port=5700 \
     AZDOMCP_Server__Path=/mcp \
+    AZDOMCP_Server__Password= \
     AZDOMCP_AzureDevOps__ReadOnly=true
 
 RUN mkdir -p /app/logs && chown -R $APP_UID:0 /app

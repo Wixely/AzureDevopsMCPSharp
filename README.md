@@ -24,6 +24,9 @@ Configure via `appsettings.json` or environment variables (env wins; use `AZDOMC
 | `Server:Host` | `localhost` | Host to bind |
 | `Server:Port` | `5700` | HTTP port |
 | `Server:Path` | `/mcp` | MCP endpoint path |
+| `Server:Password` | blank | Optional MCP endpoint password; blank disables password auth |
+
+When `Server:Password` is set, MCP requests must provide the password as `Authorization: Bearer <password>`, the Basic auth password, or `X-MCP-Password`.
 
 ## Running
 

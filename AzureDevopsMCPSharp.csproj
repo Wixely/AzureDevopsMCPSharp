@@ -7,6 +7,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>AzureDevopsMCPSharp</RootNamespace>
     <AssemblyName>AzureDevopsMCPSharp</AssemblyName>
+    <ApplicationIcon>wmcp.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,6 +26,10 @@
     <PackageReference Include="Serilog.Settings.Configuration" />
     <PackageReference Include="Serilog.Sinks.Console" />
     <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="wmcp.ico" LogicalName="MCPSharp.wmcp.ico" />
   </ItemGroup>
 
   <ItemGroup>

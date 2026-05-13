@@ -140,10 +140,11 @@ public static class PipelineTools
         await using var stream = await client.GetBuildLogAsync(resolved, buildId, logId, cancellationToken: ct);
 
         using var reader = new StreamReader(stream);
-        var buffer = new char[Math.Max(1024, maxBytes)];
-        var read = await reader.ReadBlockAsync(buffer.AsMemory(0, Math.Min(buffer.Length, maxBytes)), ct);
-        var truncated = !reader.EndOfStream;
-        var text = new string(buffer, 0, read);
+        var limit = Math.Max(1, maxBytes);
+        var buffer = new char[Math.Max(1024, limit + 1)];
+        var read = await reader.ReadBlockAsync(buffer.AsMemory(0, Math.Min(buffer.Length, limit + 1)), ct);
+        var truncated = read > limit;
+        var text = new string(buffer, 0, Math.Min(read, limit));
         if (truncated)
             text += $"\n\n[truncated at {maxBytes} bytes — fetch with a larger maxBytes for more]";
         return text;

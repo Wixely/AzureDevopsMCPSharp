@@ -26,4 +26,5 @@ public sealed class ServerOptions
     public int Port { get; set; } = 5700;
     public string Path { get; set; } = "/mcp";
     public string WindowsServiceName { get; set; } = "AzureDevopsMCPSharp";
+    public string Password { get; set; } = string.Empty;
 }

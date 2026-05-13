@@ -123,7 +123,10 @@ public static class PolicyTools
             var updated = await client.UpdatePolicyConfigurationAsync(existing, resolved, policyId, cancellationToken: ct);
             return JsonSerializer.Serialize(new
             {
-                updated.Id, updated.IsEnabled, updated.IsBlocking, TypeId = updated.Type?.Id,
+                updated.Id,
+                updated.IsEnabled,
+                updated.IsBlocking,
+                TypeId = updated.Type?.Id,
             }, JsonOpts.Default);
         }
         catch (Exception ex)

@@ -23,6 +23,7 @@ public sealed class ServerOptions
     public const string SectionName = "Server";
 
     public string Host { get; set; } = "localhost";
-    public int Port { get; set; } = 5089;
+    public int Port { get; set; } = 5700;
     public string Path { get; set; } = "/mcp";
+    public string WindowsServiceName { get; set; } = "AzureDevopsMCPSharp";
 }

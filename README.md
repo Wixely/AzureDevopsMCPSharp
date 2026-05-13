@@ -22,7 +22,7 @@ Configure via `appsettings.json` or environment variables (env wins; use `AZDOMC
 | `AzureDevOps:ReadOnly` | `true` | When `true`, all write/delete tools are disabled |
 | `AzureDevOps:Operations:<tool_name>` | _(missing = blocked)_ | Per-tool allow switch applied when `ReadOnly=false`. Only explicit `true` enables a write tool. See [Per-operation switches](#per-operation-switches). |
 | `Server:Host` | `localhost` | Host to bind |
-| `Server:Port` | `5089` | HTTP port |
+| `Server:Port` | `5700` | HTTP port |
 | `Server:Path` | `/mcp` | MCP endpoint path |
 
 ## Running
@@ -31,12 +31,12 @@ Configure via `appsettings.json` or environment variables (env wins; use `AZDOMC
 dotnet run
 ```
 
-Then point your MCP client at `http://localhost:5089/mcp`.
+Then point your MCP client at `http://localhost:5700/mcp`.
 
 ### Claude Code
 
 ```sh
-claude mcp add --transport http azdo http://localhost:5089/mcp
+claude mcp add --transport http azdo http://localhost:5700/mcp
 ```
 
 ## Docker
@@ -45,19 +45,19 @@ A `Dockerfile` is provided for HTTP-mode hosting:
 
 ```sh
 docker build -t azdomcp .
-docker run --rm -p 5089:5089 \
+docker run --rm -p 5700:5700 \
     -e AZDOMCP_AzureDevOps__OrganizationUrl="https://devops.your-domain/DefaultCollection" \
     -e AZDOMCP_AzureDevOps__PersonalAccessToken="$AZDO_PAT" \
     -e AZDOMCP_AzureDevOps__DefaultProject="MyProject" \
     azdomcp
 ```
 
-The container listens on `http://0.0.0.0:5089/mcp`. Configure via the `AZDOMCP_` env-var prefix using ASP.NET Core's `__` separator for nested keys (e.g. `AZDOMCP_AzureDevOps__ReadOnly=false`). Read-only mode is on by default.
+The container listens on `http://0.0.0.0:5700/mcp`. Configure via the `AZDOMCP_` env-var prefix using ASP.NET Core's `__` separator for nested keys (e.g. `AZDOMCP_AzureDevOps__ReadOnly=false`). Read-only mode is on by default.
 
 Logs go to stdout/stderr (Serilog console sink). To persist the rolling file logs as well, mount a volume:
 
 ```sh
-docker run --rm -p 5089:5089 -v azdomcp-logs:/app/logs ...
+docker run --rm -p 5700:5700 -v azdomcp-logs:/app/logs ...
 ```
 
 ## Running as a Windows Service

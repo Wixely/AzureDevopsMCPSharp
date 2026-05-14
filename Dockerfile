@@ -5,10 +5,12 @@ WORKDIR /src
 
 COPY NuGet.config global.json Directory.Build.props Directory.Packages.props ./
 COPY AzureDevopsMCPSharp.csproj ./
-RUN dotnet restore AzureDevopsMCPSharp.csproj
+ARG TARGETARCH
+RUN arch="${TARGETARCH:-amd64}"; \
+    if [ "$arch" = "amd64" ]; then arch="x64"; fi; \
+    dotnet restore AzureDevopsMCPSharp.csproj --arch "$arch"
 
 COPY . .
-ARG TARGETARCH
 RUN arch="${TARGETARCH:-amd64}"; \
     if [ "$arch" = "amd64" ]; then arch="x64"; fi; \
     dotnet publish AzureDevopsMCPSharp.csproj \
@@ -18,7 +20,7 @@ RUN arch="${TARGETARCH:-amd64}"; \
     --self-contained false \
     -o /app/publish \
     -p:PublishSingleFile=true \
-    -p:EnableCompressionInSingleFile=true \
+    -p:EnableCompressionInSingleFile=false \
     -p:IncludeNativeLibrariesForSelfExtract=true \
     -p:IncludeAllContentForSelfExtract=true \
     -p:IsTransformWebConfigDisabled=true \

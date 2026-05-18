@@ -152,9 +152,24 @@ All write operations ship **disabled by default** in `AzureDevopsMCPSharp.json`.
 | `set_bypass_push_policy_self` | Allow / deny / clear 'Bypass policies when pushing' for the PAT's own identity | Repo-scoped or branch-scoped. |
 | `set_bypass_push_policy_group` | Same, scoped to a named group (e.g. 'Project Administrators') | |
 | `set_bypass_push_policy_user` | Same, scoped to a single user (email / account / display name) | |
+| `set_pull_request_vote` | Set the caller's vote on a PR (approve / approve-with-suggestions / no-vote / waiting-for-author / reject) | |
+| `add_pull_request_comment` | Add a comment to a PR (new thread, or reply into a given `threadId`) | |
+| `abandon_pull_request` | Mark a PR as Abandoned (AzDO equivalent of 'deny/cancel') | Reversible via `reactivate_pull_request`. |
+| `reactivate_pull_request` | Set an abandoned PR back to Active | |
 
 When a tool is called but its operation is not explicitly enabled, the server throws a clear error naming the exact setting to flip:
 
 > `Operation 'delete_pipeline' is blocked: not enabled in AzureDevOps:Operations (missing entries default to disabled). Set AzureDevOps:Operations:delete_pipeline=true to enable it.`
 
 Override individual switches via env var, e.g. `AZDOMCP_AzureDevOps__Operations__delete_pipeline=true`.
+
+## Pull request review
+
+Full PR review surface:
+
+- **View**: `list_pull_requests`, `get_pull_request`, `list_pull_request_iterations`, `list_pull_request_changes` (per-iteration file changes), `get_pull_request_diff` (source-vs-target commit diff), `get_pull_request_file` (file content at the source-branch commit), `list_pull_request_reviewers` (with current votes), `list_pull_request_threads` (review threads + comments), `list_pull_request_work_items`, `get_pull_request_policy_evaluations` (build validation, required reviewers, …).
+- **Decide**: `set_pull_request_vote` sets the caller's vote — `approve`, `approve-with-suggestions`, `no-vote`, `waiting-for-author`, or `reject` (AzDO's "deny").
+- **Discuss**: `add_pull_request_comment` opens a new thread or replies into an existing one by `threadId`.
+- **Cancel**: `abandon_pull_request`; `reactivate_pull_request` to undo.
+
+All decide/discuss/cancel tools require both `AzureDevOps:ReadOnly=false` AND the per-operation switch (`AzureDevOps:Operations:<tool_name>=true`).

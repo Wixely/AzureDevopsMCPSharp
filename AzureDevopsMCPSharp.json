@@ -25,7 +25,11 @@
       "set_min_reviewers_policy": false,
       "set_bypass_push_policy_self": false,
       "set_bypass_push_policy_group": false,
-      "set_bypass_push_policy_user": false
+      "set_bypass_push_policy_user": false,
+      "set_pull_request_vote": false,
+      "add_pull_request_comment": false,
+      "abandon_pull_request": false,
+      "reactivate_pull_request": false
     }
   },
   "Server": {

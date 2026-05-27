@@ -186,6 +186,58 @@ public static class GitTools
             JsonOpts.Default);
     }
 
+    [McpServerTool(Name = "list_commits"),
+     Description("List commits in a Git repository. Optional filters by branch/tag/sha, path, author, and date range.")]
+    public static async Task<string> ListCommits(
+        AzureDevOpsService svc,
+        [Description("Repository id or name")] string repository,
+        [Description("Branch name, tag, or commit sha. Defaults to the repository's default branch.")] string? version = null,
+        [Description("Version type for 'version': branch, tag, or commit. Defaults to branch.")] string versionType = "branch",
+        [Description("Only commits that touch this path.")] string? path = null,
+        [Description("Filter by author display name or email.")] string? author = null,
+        [Description("Only commits from this UTC date/time (ISO 8601, e.g. 2024-01-01T00:00:00Z).")] string? fromDate = null,
+        [Description("Only commits up to this UTC date/time (ISO 8601).")] string? toDate = null,
+        [Description("Max commits to return (default 50, capped at 500).")] int top = 50,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        CancellationToken ct = default)
+    {
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<GitHttpClient>();
+        var criteria = new GitQueryCommitsCriteria();
+        if (!string.IsNullOrWhiteSpace(version))
+        {
+            criteria.ItemVersion = new GitVersionDescriptor
+            {
+                Version = version,
+                VersionType = versionType.ToLowerInvariant() switch
+                {
+                    "tag" => GitVersionType.Tag,
+                    "commit" => GitVersionType.Commit,
+                    _ => GitVersionType.Branch,
+                },
+            };
+        }
+        if (!string.IsNullOrWhiteSpace(path)) criteria.ItemPath = path;
+        if (!string.IsNullOrWhiteSpace(author)) criteria.Author = author;
+        if (!string.IsNullOrWhiteSpace(fromDate)) criteria.FromDate = fromDate;
+        if (!string.IsNullOrWhiteSpace(toDate)) criteria.ToDate = toDate;
+
+        var cap = Math.Clamp(top, 1, 500);
+        var commits = await client.GetCommitsAsync(resolved, repository, criteria, top: cap, cancellationToken: ct);
+        var summary = commits.Select(c => new
+        {
+            c.CommitId,
+            c.Comment,
+            Author = c.Author?.Name,
+            AuthorEmail = c.Author?.Email,
+            AuthoredDate = c.Author?.Date,
+            Committer = c.Committer?.Name,
+            CommittedDate = c.Committer?.Date,
+            c.RemoteUrl,
+        });
+        return JsonSerializer.Serialize(summary, JsonOpts.Default);
+    }
+
     [McpServerTool(Name = "get_pull_request"),
      Description("Get full details for a single pull request by id.")]
     public static async Task<string> GetPullRequest(

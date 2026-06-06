@@ -2,11 +2,11 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": ".NET Core Launch (AzureDevopsMCPSharp)",
+      "name": "Debug AzureDevopsMCPSharp",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/bin/Debug/net8.0/AzureDevopsMCPSharp.dll",
+      "program": "${workspaceFolder}/bin/Debug/net10.0/AzureDevopsMCPSharp.exe",
       "args": [],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,

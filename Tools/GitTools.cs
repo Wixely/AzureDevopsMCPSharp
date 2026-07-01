@@ -9,7 +9,7 @@ namespace AzureDevopsMCPSharp.Tools;
 [McpServerToolType]
 public static class GitTools
 {
-    [McpServerTool(Name = "list_repositories"),
+    [McpServerTool(Name = "azdo_list_repositories"),
      Description("List Git repositories in a project.")]
     public static async Task<string> ListRepositories(
         AzureDevOpsService svc,
@@ -23,7 +23,7 @@ public static class GitTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "list_pull_requests"),
+    [McpServerTool(Name = "azdo_list_pull_requests"),
      Description("List pull requests in a repository.")]
     public static async Task<string> ListPullRequests(
         AzureDevOpsService svc,
@@ -58,7 +58,7 @@ public static class GitTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "create_repository"),
+    [McpServerTool(Name = "azdo_create_repository"),
      Description("Create a new empty Git repository in a project. Disabled when the server is in read-only mode or the operation is not enabled.")]
     public static async Task<string> CreateRepository(
         AzureDevOpsService svc,
@@ -100,7 +100,7 @@ public static class GitTools
         }
     }
 
-    [McpServerTool(Name = "rename_repository"),
+    [McpServerTool(Name = "azdo_rename_repository"),
      Description("Rename an existing Git repository. Disabled when the server is in read-only mode or the operation is not enabled.")]
     public static async Task<string> RenameRepository(
         AzureDevOpsService svc,
@@ -143,7 +143,7 @@ public static class GitTools
         }
     }
 
-    [McpServerTool(Name = "delete_repository"),
+    [McpServerTool(Name = "azdo_delete_repository"),
      Description("Permanently delete a Git repository, including all branches, tags, history and pull requests. There is no recycle bin — this cannot be undone. Disabled when the server is in read-only mode or the operation is not enabled.")]
     public static async Task<string> DeleteRepository(
         AzureDevOpsService svc,
@@ -186,7 +186,7 @@ public static class GitTools
             JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "list_commits"),
+    [McpServerTool(Name = "azdo_list_commits"),
      Description("List commits in a Git repository. Optional filters by branch/tag/sha, path, author, and date range.")]
     public static async Task<string> ListCommits(
         AzureDevOpsService svc,
@@ -238,7 +238,7 @@ public static class GitTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "get_pull_request"),
+    [McpServerTool(Name = "azdo_get_pull_request"),
      Description("Get full details for a single pull request by id.")]
     public static async Task<string> GetPullRequest(
         AzureDevOpsService svc,

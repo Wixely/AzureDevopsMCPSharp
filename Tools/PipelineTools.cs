@@ -11,7 +11,7 @@ namespace AzureDevopsMCPSharp.Tools;
 [McpServerToolType]
 public static class PipelineTools
 {
-    [McpServerTool(Name = "list_pipelines"),
+    [McpServerTool(Name = "azdo_list_pipelines"),
      Description("List build/YAML pipeline definitions in a project.")]
     public static async Task<string> ListPipelines(
         AzureDevOpsService svc,
@@ -35,7 +35,7 @@ public static class PipelineTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "get_pipeline"),
+    [McpServerTool(Name = "azdo_get_pipeline"),
      Description("Get full definition for a single pipeline by id.")]
     public static async Task<string> GetPipeline(
         AzureDevOpsService svc,
@@ -49,7 +49,7 @@ public static class PipelineTools
         return JsonSerializer.Serialize(def, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "list_pipeline_runs"),
+    [McpServerTool(Name = "azdo_list_pipeline_runs"),
      Description("List runs (builds) for a project, optionally filtered by pipeline id, branch, status or result.")]
     public static async Task<string> ListPipelineRuns(
         AzureDevOpsService svc,
@@ -96,7 +96,7 @@ public static class PipelineTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "get_pipeline_run"),
+    [McpServerTool(Name = "azdo_get_pipeline_run"),
      Description("Get full details for a single pipeline run (build) by id.")]
     public static async Task<string> GetPipelineRun(
         AzureDevOpsService svc,
@@ -110,7 +110,7 @@ public static class PipelineTools
         return JsonSerializer.Serialize(build, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "list_build_logs"),
+    [McpServerTool(Name = "azdo_list_build_logs"),
      Description("List log entries for a pipeline run. Use get_build_log to fetch the content of a specific entry.")]
     public static async Task<string> ListBuildLogs(
         AzureDevOpsService svc,
@@ -125,7 +125,7 @@ public static class PipelineTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "get_build_log"),
+    [McpServerTool(Name = "azdo_get_build_log"),
      Description("Fetch the text content of a single build log entry. Output is truncated to maxBytes (default 200KB) to protect agent context.")]
     public static async Task<string> GetBuildLog(
         AzureDevOpsService svc,
@@ -150,7 +150,7 @@ public static class PipelineTools
         return text;
     }
 
-    [McpServerTool(Name = "queue_pipeline_run"),
+    [McpServerTool(Name = "azdo_queue_pipeline_run"),
      Description("Queue a new run of a pipeline. Disabled when the server is in read-only mode.")]
     public static async Task<string> QueuePipelineRun(
         AzureDevOpsService svc,
@@ -176,7 +176,7 @@ public static class PipelineTools
         return JsonSerializer.Serialize(queued, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "cancel_pipeline_run"),
+    [McpServerTool(Name = "azdo_cancel_pipeline_run"),
      Description("Cancel an in-progress pipeline run. Disabled when the server is in read-only mode.")]
     public static async Task<string> CancelPipelineRun(
         AzureDevOpsService svc,
@@ -193,7 +193,7 @@ public static class PipelineTools
         return JsonSerializer.Serialize(updated, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "list_pipeline_run_tags"),
+    [McpServerTool(Name = "azdo_list_pipeline_run_tags"),
      Description("List the tags stamped on a single pipeline run.")]
     public static async Task<string> ListPipelineRunTags(
         AzureDevOpsService svc,
@@ -207,7 +207,7 @@ public static class PipelineTools
         return JsonSerializer.Serialize(tags, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "add_pipeline_run_tags"),
+    [McpServerTool(Name = "azdo_add_pipeline_run_tags"),
      Description("Add one or more tags to a pipeline run. Returns the resulting full tag list. Disabled when the server is in read-only mode.")]
     public static async Task<string> AddPipelineRunTags(
         AzureDevOpsService svc,
@@ -223,7 +223,7 @@ public static class PipelineTools
         return JsonSerializer.Serialize(updated, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "remove_pipeline_run_tag"),
+    [McpServerTool(Name = "azdo_remove_pipeline_run_tag"),
      Description("Remove a single tag from a pipeline run. Returns the resulting full tag list. Disabled when the server is in read-only mode.")]
     public static async Task<string> RemovePipelineRunTag(
         AzureDevOpsService svc,
@@ -239,7 +239,7 @@ public static class PipelineTools
         return JsonSerializer.Serialize(updated, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "create_pipeline"),
+    [McpServerTool(Name = "azdo_create_pipeline"),
      Description("Create a new YAML pipeline definition pointing at an existing repository and YAML file. Disabled when the server is in read-only mode.")]
     public static async Task<string> CreatePipeline(
         AzureDevOpsService svc,
@@ -307,7 +307,7 @@ public static class PipelineTools
         }
     }
 
-    [McpServerTool(Name = "rename_pipeline"),
+    [McpServerTool(Name = "azdo_rename_pipeline"),
      Description("Rename an existing pipeline definition. Disabled when the server is in read-only mode.")]
     public static async Task<string> RenamePipeline(
         AzureDevOpsService svc,
@@ -321,7 +321,7 @@ public static class PipelineTools
         return await UpdatePipelineCore(svc, definitionId, project, d => d.Name = newName, "rename_pipeline", ct);
     }
 
-    [McpServerTool(Name = "move_pipeline"),
+    [McpServerTool(Name = "azdo_move_pipeline"),
      Description("Move a pipeline to a different folder (e.g. '\\\\Team A\\\\CI'). Use '\\\\' for the root. Disabled when the server is in read-only mode.")]
     public static async Task<string> MovePipeline(
         AzureDevOpsService svc,
@@ -336,7 +336,7 @@ public static class PipelineTools
         return await UpdatePipelineCore(svc, definitionId, project, d => d.Path = newFolderPath, "move_pipeline", ct);
     }
 
-    [McpServerTool(Name = "delete_pipeline"),
+    [McpServerTool(Name = "azdo_delete_pipeline"),
      Description("Permanently delete a pipeline definition. There is no recycle bin — this cannot be undone. Disabled when the server is in read-only mode.")]
     public static async Task<string> DeletePipeline(
         AzureDevOpsService svc,
@@ -400,7 +400,7 @@ public static class PipelineTools
         }
     }
 
-    [McpServerTool(Name = "authorize_pipeline_resource"),
+    [McpServerTool(Name = "azdo_authorize_pipeline_resource"),
      Description("Grant a pipeline permanent permission to use a protected resource (service connection, agent queue, variable group, secure file, environment, or repository). " +
                  "Equivalent to clicking 'Permit' on the pending-authorization banner with 'Permit permanently' enabled. Disabled when the server is in read-only mode.")]
     public static async Task<string> AuthorizePipelineResource(

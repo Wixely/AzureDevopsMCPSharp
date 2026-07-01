@@ -21,7 +21,7 @@ public static class SecurityTools
     // "Bypass policies when pushing" — the PolicyExempt permission bit on the Git namespace.
     private const int PolicyExemptBit = 128;
 
-    [McpServerTool(Name = "set_bypass_push_policy_self"),
+    [McpServerTool(Name = "azdo_set_bypass_push_policy_self"),
      Description("Grant / deny / clear the 'Bypass policies when pushing' permission for the identity owning the configured PAT. " +
                  "Use action='allow' to grant, 'deny' to explicitly deny, 'inherit' to remove the entry so the user falls back to group membership. " +
                  "Disabled when the server is in read-only mode or the operation is not enabled.")]
@@ -40,7 +40,7 @@ public static class SecurityTools
         return await ApplyBypassPushPolicy(svc, project, repository, branch, self.Descriptor, self.DisplayName ?? self.ProviderDisplayName ?? "self", action, "set_bypass_push_policy_self", ct);
     }
 
-    [McpServerTool(Name = "set_bypass_push_policy_group"),
+    [McpServerTool(Name = "azdo_set_bypass_push_policy_group"),
      Description("Grant / deny / clear the 'Bypass policies when pushing' permission for a group (e.g. 'Project Administrators', '[ProjectName]\\Build Administrators'). " +
                  "Disabled when the server is in read-only mode or the operation is not enabled.")]
     public static async Task<string> SetBypassPushPolicyGroup(
@@ -58,7 +58,7 @@ public static class SecurityTools
         return await ApplyBypassPushPolicy(svc, project, repository, branch, identity.Descriptor, identity.DisplayName ?? groupName, action, "set_bypass_push_policy_group", ct);
     }
 
-    [McpServerTool(Name = "set_bypass_push_policy_user"),
+    [McpServerTool(Name = "azdo_set_bypass_push_policy_user"),
      Description("Grant / deny / clear the 'Bypass policies when pushing' permission for a single user (email, account name, or display name). " +
                  "Disabled when the server is in read-only mode or the operation is not enabled.")]
     public static async Task<string> SetBypassPushPolicyUser(

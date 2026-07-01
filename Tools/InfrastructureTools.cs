@@ -15,7 +15,7 @@ public static class InfrastructureTools
 
     // ---------- Agent pools (collection-scoped) ----------
 
-    [McpServerTool(Name = "list_agent_pools"),
+    [McpServerTool(Name = "azdo_list_agent_pools"),
      Description("List agent pools in the Azure DevOps collection.")]
     public static Task<string> ListAgentPools(
         AzureDevOpsService svc,
@@ -28,7 +28,7 @@ public static class InfrastructureTools
         return GetJson(svc, query, ct);
     }
 
-    [McpServerTool(Name = "get_agent_pool"),
+    [McpServerTool(Name = "azdo_get_agent_pool"),
      Description("Get full details for a single agent pool by id.")]
     public static Task<string> GetAgentPool(
         AzureDevOpsService svc,
@@ -38,7 +38,7 @@ public static class InfrastructureTools
 
     // ---------- Agents (machines inside a pool) ----------
 
-    [McpServerTool(Name = "list_agents"),
+    [McpServerTool(Name = "azdo_list_agents"),
      Description("List agents in a pool, including online/offline status, current and last completed job.")]
     public static Task<string> ListAgents(
         AzureDevOpsService svc,
@@ -55,7 +55,7 @@ public static class InfrastructureTools
         return GetJson(svc, query, ct);
     }
 
-    [McpServerTool(Name = "get_agent"),
+    [McpServerTool(Name = "azdo_get_agent"),
      Description("Get full details for a single agent by pool id and agent id, including capabilities and current job.")]
     public static Task<string> GetAgent(
         AzureDevOpsService svc,
@@ -69,7 +69,7 @@ public static class InfrastructureTools
 
     // ---------- Environments (project-scoped, used by YAML deployments) ----------
 
-    [McpServerTool(Name = "list_environments"),
+    [McpServerTool(Name = "azdo_list_environments"),
      Description("List Pipeline Environments in a project.")]
     public static Task<string> ListEnvironments(
         AzureDevOpsService svc,
@@ -84,7 +84,7 @@ public static class InfrastructureTools
         return GetJson(svc, query, ct);
     }
 
-    [McpServerTool(Name = "get_environment"),
+    [McpServerTool(Name = "azdo_get_environment"),
      Description("Get full details for a single Pipeline Environment by id, including resource references.")]
     public static Task<string> GetEnvironment(
         AzureDevOpsService svc,
@@ -98,7 +98,7 @@ public static class InfrastructureTools
             ct);
     }
 
-    [McpServerTool(Name = "list_environment_deployments"),
+    [McpServerTool(Name = "azdo_list_environment_deployments"),
      Description("List recent deployment execution records for a Pipeline Environment.")]
     public static Task<string> ListEnvironmentDeployments(
         AzureDevOpsService svc,
@@ -115,7 +115,7 @@ public static class InfrastructureTools
 
     // ---------- Deployment groups (project-scoped, machines for classic releases) ----------
 
-    [McpServerTool(Name = "list_deployment_groups"),
+    [McpServerTool(Name = "azdo_list_deployment_groups"),
      Description("List Deployment Groups (machine groups for classic Release Management) in a project.")]
     public static Task<string> ListDeploymentGroups(
         AzureDevOpsService svc,
@@ -130,7 +130,7 @@ public static class InfrastructureTools
         return GetJson(svc, query, ct);
     }
 
-    [McpServerTool(Name = "get_deployment_group"),
+    [McpServerTool(Name = "azdo_get_deployment_group"),
      Description("Get full details for a single Deployment Group by id, expanding member machines.")]
     public static Task<string> GetDeploymentGroup(
         AzureDevOpsService svc,
@@ -144,7 +144,7 @@ public static class InfrastructureTools
             ct);
     }
 
-    [McpServerTool(Name = "list_deployment_targets"),
+    [McpServerTool(Name = "azdo_list_deployment_targets"),
      Description("List the deployment targets (machines/agents) registered in a Deployment Group, optionally filtered by tags.")]
     public static Task<string> ListDeploymentTargets(
         AzureDevOpsService svc,

@@ -13,7 +13,7 @@ namespace AzureDevopsMCPSharp.Tools;
 [McpServerToolType]
 public static class PullRequestReviewTools
 {
-    [McpServerTool(Name = "list_pull_request_iterations"),
+    [McpServerTool(Name = "azdo_list_pull_request_iterations"),
      Description("List the iterations (push-by-push history) of a PR. Iterations expose successive versions of the changeset.")]
     public static async Task<string> ListIterations(
         AzureDevOpsService svc,
@@ -39,7 +39,7 @@ public static class PullRequestReviewTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "list_pull_request_changes"),
+    [McpServerTool(Name = "azdo_list_pull_request_changes"),
      Description("List file-level changes in a given PR iteration. Pass iterationId=0 to use the latest iteration.")]
     public static async Task<string> ListChanges(
         AzureDevOpsService svc,
@@ -72,7 +72,7 @@ public static class PullRequestReviewTools
         return JsonSerializer.Serialize(new { iterationId, changes = summary }, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "get_pull_request_diff"),
+    [McpServerTool(Name = "azdo_get_pull_request_diff"),
      Description("Return the unified diff between the PR's source and target branches (via commit diffs).")]
     public static async Task<string> GetDiff(
         AzureDevOpsService svc,
@@ -111,7 +111,7 @@ public static class PullRequestReviewTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "get_pull_request_file"),
+    [McpServerTool(Name = "azdo_get_pull_request_file"),
      Description("Return the content of a single file at the PR's source-branch commit. Use list_pull_request_changes to discover paths.")]
     public static async Task<string> GetFile(
         AzureDevOpsService svc,
@@ -150,7 +150,7 @@ public static class PullRequestReviewTools
         return JsonSerializer.Serialize(new { path, sha, length = text.Length, truncated, content = text }, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "list_pull_request_reviewers"),
+    [McpServerTool(Name = "azdo_list_pull_request_reviewers"),
      Description("List reviewers on a PR with their current vote (10=approve, 5=approve-with-suggestions, 0=no vote, -5=wait, -10=reject).")]
     public static async Task<string> ListReviewers(
         AzureDevOpsService svc,
@@ -177,7 +177,7 @@ public static class PullRequestReviewTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "list_pull_request_threads"),
+    [McpServerTool(Name = "azdo_list_pull_request_threads"),
      Description("List comment threads on a PR (each thread = one location with one or more comments).")]
     public static async Task<string> ListThreads(
         AzureDevOpsService svc,
@@ -217,7 +217,7 @@ public static class PullRequestReviewTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "list_pull_request_work_items"),
+    [McpServerTool(Name = "azdo_list_pull_request_work_items"),
      Description("List work items linked to a PR (id + url).")]
     public static async Task<string> ListWorkItems(
         AzureDevOpsService svc,
@@ -233,7 +233,7 @@ public static class PullRequestReviewTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "get_pull_request_policy_evaluations"),
+    [McpServerTool(Name = "azdo_get_pull_request_policy_evaluations"),
      Description("Return branch-policy evaluation results for a PR (build validation, required reviewers, comment resolution, …).")]
     public static async Task<string> GetPolicyEvaluations(
         AzureDevOpsService svc,
@@ -262,7 +262,7 @@ public static class PullRequestReviewTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "set_pull_request_vote"),
+    [McpServerTool(Name = "azdo_set_pull_request_vote"),
      Description("Set the authenticated user's vote on a PR. Vote values: approve, approve-with-suggestions, no-vote (reset), waiting-for-author, reject. Requires write mode and operation enabled.")]
     public static async Task<string> SetVote(
         AzureDevOpsService svc,
@@ -288,7 +288,7 @@ public static class PullRequestReviewTools
         return JsonSerializer.Serialize(new { reviewer = updated.DisplayName, updated.Vote, VoteText = VoteToText(updated.Vote) }, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "add_pull_request_comment"),
+    [McpServerTool(Name = "azdo_add_pull_request_comment"),
      Description("Add a comment to a PR. With no threadId a new conversation thread is started; with a threadId the comment replies in that thread. Requires write mode and operation enabled.")]
     public static async Task<string> AddComment(
         AzureDevOpsService svc,
@@ -324,7 +324,7 @@ public static class PullRequestReviewTools
         }
     }
 
-    [McpServerTool(Name = "abandon_pull_request"),
+    [McpServerTool(Name = "azdo_abandon_pull_request"),
      Description("Mark a PR as Abandoned (Azure DevOps's equivalent of 'deny/cancel'). Requires write mode and operation enabled.")]
     public static async Task<string> Abandon(
         AzureDevOpsService svc,
@@ -342,7 +342,7 @@ public static class PullRequestReviewTools
         return JsonSerializer.Serialize(new { pr.PullRequestId, Status = pr.Status.ToString(), pr.Url }, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "reactivate_pull_request"),
+    [McpServerTool(Name = "azdo_reactivate_pull_request"),
      Description("Reactivate a previously abandoned PR (sets status back to Active). Requires write mode and operation enabled.")]
     public static async Task<string> Reactivate(
         AzureDevOpsService svc,

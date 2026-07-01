@@ -12,7 +12,7 @@ namespace AzureDevopsMCPSharp.Tools;
 [McpServerToolType]
 public static class MentionsTools
 {
-    [McpServerTool(Name = "list_mentions_since"),
+    [McpServerTool(Name = "azdo_list_mentions_since"),
      Description("Find recent work items and discussion comments in an Azure DevOps project where a given substring appears in the description, history, or discussion threads (typically a user/group mention such as \"@bot\" or any other phrase). Designed for polling-style consumers - returns a stable JSON shape with the match kind, the author, the body, the URL and timestamps.")]
     public static async Task<string> ListMentionsSince(
         AzureDevOpsService svc,

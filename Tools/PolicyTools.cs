@@ -14,7 +14,7 @@ public static class PolicyTools
     // Well-known policy type Guids. Source: Azure DevOps REST docs / Microsoft.TeamFoundation.Policy assembly.
     private static readonly Guid MinimumReviewersPolicyTypeId = new("fa4ab017-c95a-4c3f-9b5a-f0fc05cc1a48");
 
-    [McpServerTool(Name = "list_repo_policies"),
+    [McpServerTool(Name = "azdo_list_repo_policies"),
      Description("List branch/repo policy configurations in a project, optionally filtered by repository.")]
     public static async Task<string> ListRepoPolicies(
         AzureDevOpsService svc,
@@ -45,7 +45,7 @@ public static class PolicyTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "get_repo_policy"),
+    [McpServerTool(Name = "azdo_get_repo_policy"),
      Description("Get full configuration for a single policy by configuration id.")]
     public static async Task<string> GetRepoPolicy(
         AzureDevOpsService svc,
@@ -68,7 +68,7 @@ public static class PolicyTools
         }, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "delete_repo_policy"),
+    [McpServerTool(Name = "azdo_delete_repo_policy"),
      Description("Permanently delete a policy configuration. Disabled when the server is in read-only mode or the operation is not enabled.")]
     public static async Task<string> DeleteRepoPolicy(
         AzureDevOpsService svc,
@@ -93,7 +93,7 @@ public static class PolicyTools
         return JsonSerializer.Serialize(new { deleted = true, policyId, project = resolved }, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "set_policy_enabled"),
+    [McpServerTool(Name = "azdo_set_policy_enabled"),
      Description("Enable or disable an existing policy configuration without changing its settings. Disabled when the server is in read-only mode or the operation is not enabled.")]
     public static async Task<string> SetPolicyEnabled(
         AzureDevOpsService svc,
@@ -138,7 +138,7 @@ public static class PolicyTools
         }
     }
 
-    [McpServerTool(Name = "set_repo_policy"),
+    [McpServerTool(Name = "azdo_set_repo_policy"),
      Description("Create or update a policy configuration of any type, by passing the type Guid and a raw settings JSON object. " +
                  "Pass policyId to update an existing policy; omit it to create a new one. The 'scope' is built from repository/branch/matchKind " +
                  "and merged into the settings automatically. Disabled when the server is in read-only mode or the operation is not enabled.")]
@@ -186,7 +186,7 @@ public static class PolicyTools
         return await UpsertPolicy(svc, resolved, config, policyId, "set_repo_policy", ct);
     }
 
-    [McpServerTool(Name = "set_min_reviewers_policy"),
+    [McpServerTool(Name = "azdo_set_min_reviewers_policy"),
      Description("Create or update the 'Minimum number of reviewers' branch policy. Pass policyId to update an existing one; omit to create. " +
                  "Disabled when the server is in read-only mode or the operation is not enabled.")]
     public static async Task<string> SetMinReviewersPolicy(

@@ -12,7 +12,7 @@ namespace AzureDevopsMCPSharp.Tools;
 [McpServerToolType]
 public static class WorkItemTools
 {
-    [McpServerTool(Name = "get_work_item"),
+    [McpServerTool(Name = "azdo_get_work_item"),
      Description("Get a work item by id, including all fields and (optionally) relations.")]
     public static async Task<string> GetWorkItem(
         AzureDevOpsService svc,
@@ -26,7 +26,7 @@ public static class WorkItemTools
         return JsonSerializer.Serialize(wi, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "query_work_items"),
+    [McpServerTool(Name = "azdo_query_work_items"),
      Description("Run a WIQL query against the configured project and return matching work items.")]
     public static async Task<string> QueryWorkItems(
         AzureDevOpsService svc,
@@ -46,7 +46,7 @@ public static class WorkItemTools
         return JsonSerializer.Serialize(items, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "create_work_item"),
+    [McpServerTool(Name = "azdo_create_work_item"),
      Description("Create a new work item. Disabled when the server is in read-only mode.")]
     public static async Task<string> CreateWorkItem(
         AzureDevOpsService svc,
@@ -71,7 +71,7 @@ public static class WorkItemTools
         return JsonSerializer.Serialize(wi, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "update_work_item"),
+    [McpServerTool(Name = "azdo_update_work_item"),
      Description("Patch fields on an existing work item. Disabled when the server is in read-only mode.")]
     public static async Task<string> UpdateWorkItem(
         AzureDevOpsService svc,

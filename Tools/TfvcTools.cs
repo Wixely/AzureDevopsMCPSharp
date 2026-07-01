@@ -12,7 +12,7 @@ namespace AzureDevopsMCPSharp.Tools;
 [McpServerToolType]
 public static class TfvcTools
 {
-    [McpServerTool(Name = "list_tfvc_items"),
+    [McpServerTool(Name = "azdo_list_tfvc_items"),
      Description("List TFVC items (folders/files) at a server path, e.g. $/MyProject/Source. Use recursionLevel=OneLevel to drill, Full only for small subtrees.")]
     public static async Task<string> ListTfvcItems(
         AzureDevOpsService svc,
@@ -43,7 +43,7 @@ public static class TfvcTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "get_tfvc_item_content"),
+    [McpServerTool(Name = "azdo_get_tfvc_item_content"),
      Description("Fetch the content of a TFVC file. Output is text, truncated to maxBytes (default 200KB) to protect agent context.")]
     public static async Task<string> GetTfvcItemContent(
         AzureDevOpsService svc,
@@ -77,7 +77,7 @@ public static class TfvcTools
         return text;
     }
 
-    [McpServerTool(Name = "list_tfvc_changesets"),
+    [McpServerTool(Name = "azdo_list_tfvc_changesets"),
      Description("List TFVC changesets, optionally filtered by author, path, or id range.")]
     public static async Task<string> ListTfvcChangesets(
         AzureDevOpsService svc,
@@ -117,7 +117,7 @@ public static class TfvcTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "get_tfvc_changeset"),
+    [McpServerTool(Name = "azdo_get_tfvc_changeset"),
      Description("Get full details for a single TFVC changeset by id, including comment and check-in metadata.")]
     public static async Task<string> GetTfvcChangeset(
         AzureDevOpsService svc,
@@ -129,7 +129,7 @@ public static class TfvcTools
         return JsonSerializer.Serialize(changeset, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "list_tfvc_changeset_changes"),
+    [McpServerTool(Name = "azdo_list_tfvc_changeset_changes"),
      Description("List the file changes (add/edit/delete/rename) made in a TFVC changeset.")]
     public static async Task<string> ListTfvcChangesetChanges(
         AzureDevOpsService svc,
@@ -149,7 +149,7 @@ public static class TfvcTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "list_tfvc_branches"),
+    [McpServerTool(Name = "azdo_list_tfvc_branches"),
      Description("List TFVC branches in a project (only relevant when the project uses TFVC branching).")]
     public static async Task<string> ListTfvcBranches(
         AzureDevOpsService svc,

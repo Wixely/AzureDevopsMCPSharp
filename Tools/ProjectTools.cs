@@ -9,7 +9,7 @@ namespace AzureDevopsMCPSharp.Tools;
 [McpServerToolType]
 public static class ProjectTools
 {
-    [McpServerTool(Name = "list_projects"),
+    [McpServerTool(Name = "azdo_list_projects"),
      Description("List Team Projects in the configured Azure DevOps collection.")]
     public static async Task<string> ListProjects(AzureDevOpsService svc, CancellationToken ct)
     {
@@ -19,7 +19,7 @@ public static class ProjectTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
-    [McpServerTool(Name = "get_project"),
+    [McpServerTool(Name = "azdo_get_project"),
      Description("Get details for a single Team Project by name or id.")]
     public static async Task<string> GetProject(
         AzureDevOpsService svc,

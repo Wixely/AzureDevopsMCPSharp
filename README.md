@@ -131,31 +131,31 @@ All write operations ship **disabled by default** in `AzureDevopsMCPSharp.json`.
 
 | Operation | Tool | Notes |
 | --- | --- | --- |
-| `queue_pipeline_run` | Queue a pipeline run | |
-| `cancel_pipeline_run` | Cancel an in-progress run | |
-| `add_pipeline_run_tags` | Stamp tags onto a run | |
-| `remove_pipeline_run_tag` | Remove a tag from a run | |
-| `create_pipeline` | Create a YAML pipeline definition | |
-| `rename_pipeline` | Rename a pipeline | |
-| `move_pipeline` | Move a pipeline to a different folder | |
-| `delete_pipeline` | **Permanently** delete a pipeline | No undo. Shipped default is `false`. |
-| `authorize_pipeline_resource` | Grant a pipeline permission to use a protected resource | |
-| `create_work_item` | Create a work item | |
-| `update_work_item` | Patch fields on a work item | |
-| `create_repository` | Create a new empty Git repository | |
-| `rename_repository` | Rename a Git repository | |
-| `delete_repository` | **Permanently** delete a Git repository | No undo. Wipes branches, history, PRs. |
-| `delete_repo_policy` | Delete a branch/repo policy configuration | |
-| `set_policy_enabled` | Toggle a policy on/off without changing its settings | |
-| `set_repo_policy` | Generic create/update for any policy type (pass type Guid + raw settings JSON) | |
-| `set_min_reviewers_policy` | Typed helper for the 'Minimum number of reviewers' policy | |
-| `set_bypass_push_policy_self` | Allow / deny / clear 'Bypass policies when pushing' for the PAT's own identity | Repo-scoped or branch-scoped. |
-| `set_bypass_push_policy_group` | Same, scoped to a named group (e.g. 'Project Administrators') | |
-| `set_bypass_push_policy_user` | Same, scoped to a single user (email / account / display name) | |
-| `set_pull_request_vote` | Set the caller's vote on a PR (approve / approve-with-suggestions / no-vote / waiting-for-author / reject) | |
-| `add_pull_request_comment` | Add a comment to a PR (new thread, or reply into a given `threadId`) | |
-| `abandon_pull_request` | Mark a PR as Abandoned (AzDO equivalent of 'deny/cancel') | Reversible via `reactivate_pull_request`. |
-| `reactivate_pull_request` | Set an abandoned PR back to Active | |
+| `azdo_queue_pipeline_run` | Queue a pipeline run | |
+| `azdo_cancel_pipeline_run` | Cancel an in-progress run | |
+| `azdo_add_pipeline_run_tags` | Stamp tags onto a run | |
+| `azdo_remove_pipeline_run_tag` | Remove a tag from a run | |
+| `azdo_create_pipeline` | Create a YAML pipeline definition | |
+| `azdo_rename_pipeline` | Rename a pipeline | |
+| `azdo_move_pipeline` | Move a pipeline to a different folder | |
+| `azdo_delete_pipeline` | **Permanently** delete a pipeline | No undo. Shipped default is `false`. |
+| `azdo_authorize_pipeline_resource` | Grant a pipeline permission to use a protected resource | |
+| `azdo_create_work_item` | Create a work item | |
+| `azdo_update_work_item` | Patch fields on a work item | |
+| `azdo_create_repository` | Create a new empty Git repository | |
+| `azdo_rename_repository` | Rename a Git repository | |
+| `azdo_delete_repository` | **Permanently** delete a Git repository | No undo. Wipes branches, history, PRs. |
+| `azdo_delete_repo_policy` | Delete a branch/repo policy configuration | |
+| `azdo_set_policy_enabled` | Toggle a policy on/off without changing its settings | |
+| `azdo_set_repo_policy` | Generic create/update for any policy type (pass type Guid + raw settings JSON) | |
+| `azdo_set_min_reviewers_policy` | Typed helper for the 'Minimum number of reviewers' policy | |
+| `azdo_set_bypass_push_policy_self` | Allow / deny / clear 'Bypass policies when pushing' for the PAT's own identity | Repo-scoped or branch-scoped. |
+| `azdo_set_bypass_push_policy_group` | Same, scoped to a named group (e.g. 'Project Administrators') | |
+| `azdo_set_bypass_push_policy_user` | Same, scoped to a single user (email / account / display name) | |
+| `azdo_set_pull_request_vote` | Set the caller's vote on a PR (approve / approve-with-suggestions / no-vote / waiting-for-author / reject) | |
+| `azdo_add_pull_request_comment` | Add a comment to a PR (new thread, or reply into a given `threadId`) | |
+| `azdo_abandon_pull_request` | Mark a PR as Abandoned (AzDO equivalent of 'deny/cancel') | Reversible via `azdo_reactivate_pull_request`. |
+| `azdo_reactivate_pull_request` | Set an abandoned PR back to Active | |
 
 When a tool is called but its operation is not explicitly enabled, the server throws a clear error naming the exact setting to flip:
 
@@ -167,9 +167,9 @@ Override individual switches via env var, e.g. `AZDOMCP_AzureDevOps__Operations_
 
 Full PR review surface:
 
-- **View**: `list_pull_requests`, `get_pull_request`, `list_pull_request_iterations`, `list_pull_request_changes` (per-iteration file changes), `get_pull_request_diff` (source-vs-target commit diff), `get_pull_request_file` (file content at the source-branch commit), `list_pull_request_reviewers` (with current votes), `list_pull_request_threads` (review threads + comments), `list_pull_request_work_items`, `get_pull_request_policy_evaluations` (build validation, required reviewers, …).
-- **Decide**: `set_pull_request_vote` sets the caller's vote — `approve`, `approve-with-suggestions`, `no-vote`, `waiting-for-author`, or `reject` (AzDO's "deny").
-- **Discuss**: `add_pull_request_comment` opens a new thread or replies into an existing one by `threadId`.
-- **Cancel**: `abandon_pull_request`; `reactivate_pull_request` to undo.
+- **View**: `azdo_list_pull_requests`, `azdo_get_pull_request`, `azdo_list_pull_request_iterations`, `azdo_list_pull_request_changes` (per-iteration file changes), `azdo_get_pull_request_diff` (source-vs-target commit diff), `azdo_get_pull_request_file` (file content at the source-branch commit), `azdo_list_pull_request_reviewers` (with current votes), `azdo_list_pull_request_threads` (review threads + comments), `azdo_list_pull_request_work_items`, `azdo_get_pull_request_policy_evaluations` (build validation, required reviewers, …).
+- **Decide**: `azdo_set_pull_request_vote` sets the caller's vote — `approve`, `approve-with-suggestions`, `no-vote`, `waiting-for-author`, or `reject` (AzDO's "deny").
+- **Discuss**: `azdo_add_pull_request_comment` opens a new thread or replies into an existing one by `threadId`.
+- **Cancel**: `azdo_abandon_pull_request`; `azdo_reactivate_pull_request` to undo.
 
 All decide/discuss/cancel tools require both `AzureDevOps:ReadOnly=false` AND the per-operation switch (`AzureDevOps:Operations:<tool_name>=true`).

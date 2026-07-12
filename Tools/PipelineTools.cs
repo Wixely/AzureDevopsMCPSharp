@@ -138,7 +138,11 @@ public static class PipelineTools
         var resolved = svc.ResolveProject(project);
         var client = svc.GetClient<BuildHttpClient>();
         await using var stream = await client.GetBuildLogAsync(resolved, buildId, logId, cancellationToken: ct);
+        return await ReadTruncated(stream, maxBytes, ct);
+    }
 
+    private static async Task<string> ReadTruncated(Stream stream, int maxBytes, CancellationToken ct)
+    {
         using var reader = new StreamReader(stream);
         var limit = Math.Max(1, maxBytes);
         var buffer = new char[Math.Max(1024, limit + 1)];
@@ -148,6 +152,85 @@ public static class PipelineTools
         if (truncated)
             text += $"\n\n[truncated at {maxBytes} bytes — fetch with a larger maxBytes for more]";
         return text;
+    }
+
+    [McpServerTool(Name = "azdo_list_pipeline_jobs"),
+     Description("List the jobs of a pipeline run from its timeline, with each job's state, result, timing and the log id to fetch. Use this to find which job failed, then fetch its log with azdo_get_job_log (or azdo_get_build_log with the LogId). Set includeTasks to also list the individual task steps within each job.")]
+    public static async Task<string> ListPipelineJobs(
+        AzureDevOpsService svc,
+        [Description("Build / run id")] int buildId,
+        [Description("Also include task (step) records, not just jobs")] bool includeTasks = false,
+        [Description("Only return jobs/tasks whose result was failed or canceled. Handy for diagnosing a broken run.")] bool onlyFailed = false,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        CancellationToken ct = default)
+    {
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<BuildHttpClient>();
+        var timeline = await client.GetBuildTimelineAsync(resolved, buildId, cancellationToken: ct)
+            ?? throw new InvalidOperationException(
+                $"No timeline found for build {buildId} in project '{resolved}'. The run may not have started yet.");
+
+        var wanted = includeTasks
+            ? new[] { "Job", "Task" }
+            : new[] { "Job" };
+
+        IEnumerable<TimelineRecord> records = timeline.Records
+            .Where(rec => wanted.Contains(rec.RecordType, StringComparer.OrdinalIgnoreCase));
+
+        if (onlyFailed)
+            records = records.Where(rec => rec.Result is TaskResult.Failed or TaskResult.Canceled or TaskResult.Abandoned);
+
+        var jobs = records
+            .OrderBy(rec => rec.Order ?? int.MaxValue)
+            .Select(rec => new
+            {
+                rec.Id,
+                rec.Name,
+                Type = rec.RecordType,
+                State = rec.State?.ToString(),
+                Result = rec.Result?.ToString(),
+                rec.StartTime,
+                rec.FinishTime,
+                rec.WorkerName,
+                LogId = rec.Log?.Id,
+                rec.ErrorCount,
+                rec.WarningCount,
+                rec.ParentId,
+                rec.Attempt,
+            });
+        return JsonSerializer.Serialize(jobs, JsonOpts.Default);
+    }
+
+    [McpServerTool(Name = "azdo_get_job_log"),
+     Description("Fetch the text log of a single job (or task) from a pipeline run's timeline, identified by its record id (from azdo_list_pipeline_jobs). Output is truncated to maxBytes (default 200KB) to protect agent context.")]
+    public static async Task<string> GetJobLog(
+        AzureDevOpsService svc,
+        [Description("Build / run id")] int buildId,
+        [Description("Job (timeline record) id — the 'Id' field from azdo_list_pipeline_jobs")] string jobId,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        [Description("Max bytes to return; remainder is truncated (default 204800)")] int maxBytes = 204800,
+        CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(jobId, out var recordId))
+            throw new ArgumentException($"jobId '{jobId}' is not a valid timeline record id (GUID). Get it from azdo_list_pipeline_jobs.", nameof(jobId));
+
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<BuildHttpClient>();
+        var timeline = await client.GetBuildTimelineAsync(resolved, buildId, cancellationToken: ct)
+            ?? throw new InvalidOperationException(
+                $"No timeline found for build {buildId} in project '{resolved}'.");
+
+        var record = timeline.Records.FirstOrDefault(r => r.Id == recordId)
+            ?? throw new InvalidOperationException(
+                $"No timeline record {jobId} found in build {buildId}. Use azdo_list_pipeline_jobs to list valid job ids.");
+
+        if (record.Log is null)
+            throw new InvalidOperationException(
+                $"Timeline record '{record.Name}' (type {record.RecordType}) has no log — stage/phase containers have no log of their own. " +
+                "Pick a Job or Task record (call azdo_list_pipeline_jobs with includeTasks=true).");
+
+        await using var stream = await client.GetBuildLogAsync(resolved, buildId, record.Log.Id, cancellationToken: ct);
+        return await ReadTruncated(stream, maxBytes, ct);
     }
 
     [McpServerTool(Name = "azdo_queue_pipeline_run"),

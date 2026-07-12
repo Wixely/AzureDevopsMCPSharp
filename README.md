@@ -173,3 +173,13 @@ Full PR review surface:
 - **Cancel**: `azdo_abandon_pull_request`; `azdo_reactivate_pull_request` to undo.
 
 All decide/discuss/cancel tools require both `AzureDevOps:ReadOnly=false` AND the per-operation switch (`AzureDevOps:Operations:<tool_name>=true`).
+
+## Pipelines / CI
+
+Read tools for diagnosing a failing run down to the individual job (no per-operation switch needed — these are reads):
+
+- **Runs**: `azdo_list_pipelines`, `azdo_get_pipeline`, `azdo_list_pipeline_runs`, `azdo_get_pipeline_run`.
+- **Per-job**: `azdo_list_pipeline_jobs` reads the run's timeline and lists each job with its state, result, timing, worker and the `LogId` to fetch (pass `includeTasks=true` to expand the task steps, or `onlyFailed=true` to narrow to the jobs that broke); `azdo_get_job_log` fetches a single job's log by its timeline record id, truncated to `maxBytes` (default 200 KB) to protect agent context.
+- **Whole-run logs**: `azdo_list_build_logs` / `azdo_get_build_log` still expose the raw log blobs by log id.
+
+Typical flow: `azdo_list_pipeline_runs` → `azdo_list_pipeline_jobs buildId onlyFailed=true` → `azdo_get_job_log buildId jobId`. This mirrors the per-job log flow in the GitHub and GitLab MCP servers.

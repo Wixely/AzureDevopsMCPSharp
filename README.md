@@ -155,7 +155,8 @@ All write operations ship **disabled by default** in `AzureDevopsMCPSharp.json`.
 | `azdo_set_pull_request_vote` | Set the caller's vote on a PR (approve / approve-with-suggestions / no-vote / waiting-for-author / reject) | |
 | `azdo_add_pull_request_comment` | Add a comment to a PR (new thread, or reply into a given `threadId`) | |
 | `azdo_create_pull_request` | Create a pull request (source → target branch) | |
-| `azdo_complete_pull_request` | Complete (merge) a PR — noFastForward / squash / rebase / rebaseMerge | Optional delete source branch, bypass policy. |
+| `azdo_complete_pull_request` | Complete (merge) a PR — noFastForward / squash / rebase / rebaseMerge | Optional delete source branch. |
+| `bypass_pull_request_policy` | Allow `azdo_complete_pull_request` to override unmet branch policies (`bypassPolicy=true`) | Gates the override only; the AzDO 'Bypass policies when completing' permission is still enforced server-side. |
 | `azdo_abandon_pull_request` | Mark a PR as Abandoned (AzDO equivalent of 'deny/cancel') | Reversible via `azdo_reactivate_pull_request`. |
 | `azdo_reactivate_pull_request` | Set an abandoned PR back to Active | |
 
@@ -173,7 +174,7 @@ Full PR review surface:
 - **Create**: `azdo_create_pull_request` (title, source → target branch, optional description, `isDraft`).
 - **Decide**: `azdo_set_pull_request_vote` sets the caller's vote — `approve`, `approve-with-suggestions`, `no-vote`, `waiting-for-author`, or `reject` (AzDO's "deny").
 - **Discuss**: `azdo_add_pull_request_comment` opens a new thread or replies into an existing one by `threadId`.
-- **Complete**: `azdo_complete_pull_request` (`mergeStrategy` = noFastForward / squash / rebase / rebaseMerge, optional `deleteSourceBranch`, `bypassPolicy`).
+- **Complete**: `azdo_complete_pull_request` (`mergeStrategy` = noFastForward / squash / rebase / rebaseMerge, optional `deleteSourceBranch`). Set `bypassPolicy=true` with a `bypassReason` to **override branch policies** (unmet approvals / required reviewers / checks) — the equivalent of "Override branch policies and enable merge" in the UI. This needs the caller's PAT/identity to hold the *Bypass policies when completing pull requests* permission **and** the separate `bypass_pull_request_policy` operation switch to be enabled (on top of `complete_pull_request`).
 - **Cancel**: `azdo_abandon_pull_request`; `azdo_reactivate_pull_request` to undo.
 
 All create/decide/discuss/complete/cancel tools require both `AzureDevOps:ReadOnly=false` AND the per-operation switch (`AzureDevOps:Operations:<tool_name>=true`).

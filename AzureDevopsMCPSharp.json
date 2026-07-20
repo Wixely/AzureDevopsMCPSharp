@@ -30,6 +30,7 @@
       "add_pull_request_comment": false,
       "create_pull_request": false,
       "complete_pull_request": false,
+      "bypass_pull_request_policy": false,
       "abandon_pull_request": false,
       "reactivate_pull_request": false
     }

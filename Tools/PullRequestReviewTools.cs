@@ -325,7 +325,11 @@ public static class PullRequestReviewTools
     }
 
     [McpServerTool(Name = "azdo_complete_pull_request"),
-     Description("Complete (merge) a PR. mergeStrategy: noFastForward (default merge commit), squash, rebase, rebaseMerge. Optionally delete the source branch and bypass branch policies. Requires write mode and operation enabled.")]
+     Description("Complete (merge) a PR. mergeStrategy: noFastForward (default merge commit), squash, rebase, rebaseMerge. " +
+                 "Set bypassPolicy=true to override branch policies (e.g. required approvals/reviewers/checks not met) — this is the " +
+                 "equivalent of the 'Override branch policies and enable merge' option in the Azure DevOps UI and needs the caller to have " +
+                 "the 'Bypass policies when completing pull requests' permission; supply bypassReason for the audit trail. " +
+                 "Requires write mode and operation enabled.")]
     public static async Task<string> Complete(
         AzureDevOpsService svc,
         [Description("Repository id or name")] string repository,
@@ -333,11 +337,17 @@ public static class PullRequestReviewTools
         [Description("Merge strategy: noFastForward, squash, rebase, rebaseMerge (default noFastForward).")] string mergeStrategy = "noFastForward",
         [Description("Delete the source branch after completion (default false).")] bool deleteSourceBranch = false,
         [Description("Optional merge commit message.")] string? mergeCommitMessage = null,
-        [Description("Bypass branch policies when completing (requires the 'bypass policies' permission; default false).")] bool bypassPolicy = false,
+        [Description("Override (bypass) branch policies when completing even if approvals/reviewers/checks are not satisfied. Requires the 'Bypass policies when completing pull requests' permission. Default false.")] bool bypassPolicy = false,
+        [Description("Reason recorded in the audit trail for the policy override. Recommended whenever bypassPolicy=true.")] string? bypassReason = null,
         [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
         CancellationToken ct = default)
     {
         svc.EnsureWriteAllowed("complete_pull_request");
+        // Policy override is a privileged action gated separately, so an operator can permit normal
+        // completions while keeping bypass off. (The Azure DevOps server still enforces the caller's
+        // 'Bypass policies when completing pull requests' permission on top of this.)
+        if (bypassPolicy) svc.EnsureWriteAllowed("bypass_pull_request_policy");
+
         var resolved = svc.ResolveProject(project);
         var client = svc.GetClient<GitHttpClient>();
 
@@ -366,6 +376,8 @@ public static class PullRequestReviewTools
                 DeleteSourceBranch = deleteSourceBranch,
                 MergeCommitMessage = mergeCommitMessage,
                 BypassPolicy = bypassPolicy,
+                // Only meaningful when bypassing; recorded on the PR's policy-override audit entry.
+                BypassReason = bypassPolicy ? bypassReason : null,
             },
         };
 
@@ -378,6 +390,8 @@ public static class PullRequestReviewTools
                 Status = pr.Status.ToString(),
                 MergeStatus = pr.MergeStatus.ToString(),
                 MergeStrategy = strategy.ToString(),
+                PolicyBypassed = bypassPolicy,
+                BypassReason = bypassPolicy ? bypassReason : null,
                 pr.Url,
             }, JsonOpts.Default);
         }

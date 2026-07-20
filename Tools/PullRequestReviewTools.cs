@@ -324,6 +324,72 @@ public static class PullRequestReviewTools
         }
     }
 
+    [McpServerTool(Name = "azdo_complete_pull_request"),
+     Description("Complete (merge) a PR. mergeStrategy: noFastForward (default merge commit), squash, rebase, rebaseMerge. Optionally delete the source branch and bypass branch policies. Requires write mode and operation enabled.")]
+    public static async Task<string> Complete(
+        AzureDevOpsService svc,
+        [Description("Repository id or name")] string repository,
+        [Description("Pull request id")] int pullRequestId,
+        [Description("Merge strategy: noFastForward, squash, rebase, rebaseMerge (default noFastForward).")] string mergeStrategy = "noFastForward",
+        [Description("Delete the source branch after completion (default false).")] bool deleteSourceBranch = false,
+        [Description("Optional merge commit message.")] string? mergeCommitMessage = null,
+        [Description("Bypass branch policies when completing (requires the 'bypass policies' permission; default false).")] bool bypassPolicy = false,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        CancellationToken ct = default)
+    {
+        svc.EnsureWriteAllowed("complete_pull_request");
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<GitHttpClient>();
+
+        var strategy = mergeStrategy.ToLowerInvariant() switch
+        {
+            "squash" => GitPullRequestMergeStrategy.Squash,
+            "rebase" => GitPullRequestMergeStrategy.Rebase,
+            "rebasemerge" or "rebase-merge" => GitPullRequestMergeStrategy.RebaseMerge,
+            "nofastforward" or "no-fast-forward" or "merge" or "" => GitPullRequestMergeStrategy.NoFastForward,
+            _ => throw new ArgumentException(
+                $"Unknown mergeStrategy '{mergeStrategy}'. Expected: noFastForward, squash, rebase, rebaseMerge.", nameof(mergeStrategy)),
+        };
+
+        // The server needs the source commit to know what to merge.
+        var existing = await client.GetPullRequestAsync(resolved, repository, pullRequestId, cancellationToken: ct);
+        if (existing.LastMergeSourceCommit is null)
+            throw new InvalidOperationException("PR has no source commit yet; cannot complete.");
+
+        var update = new GitPullRequest
+        {
+            Status = PullRequestStatus.Completed,
+            LastMergeSourceCommit = existing.LastMergeSourceCommit,
+            CompletionOptions = new GitPullRequestCompletionOptions
+            {
+                MergeStrategy = strategy,
+                DeleteSourceBranch = deleteSourceBranch,
+                MergeCommitMessage = mergeCommitMessage,
+                BypassPolicy = bypassPolicy,
+            },
+        };
+
+        try
+        {
+            var pr = await client.UpdatePullRequestAsync(update, resolved, repository, pullRequestId, cancellationToken: ct);
+            return JsonSerializer.Serialize(new
+            {
+                pr.PullRequestId,
+                Status = pr.Status.ToString(),
+                MergeStatus = pr.MergeStatus.ToString(),
+                MergeStrategy = strategy.ToString(),
+                pr.Url,
+            }, JsonOpts.Default);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"complete_pull_request failed for PR {pullRequestId} in '{resolved}/{repository}': {ex.Message}. " +
+                "Common causes: unresolved merge conflicts; required branch policies not satisfied (set bypassPolicy=true only if permitted); " +
+                "the PR is a draft (publish it first); PAT lacks 'Code (read & write)'.", ex);
+        }
+    }
+
     [McpServerTool(Name = "azdo_abandon_pull_request"),
      Description("Mark a PR as Abandoned (Azure DevOps's equivalent of 'deny/cancel'). Requires write mode and operation enabled.")]
     public static async Task<string> Abandon(

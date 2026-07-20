@@ -58,6 +58,61 @@ public static class GitTools
         return JsonSerializer.Serialize(summary, JsonOpts.Default);
     }
 
+    [McpServerTool(Name = "azdo_create_pull_request"),
+     Description("Create a pull request from a source branch into a target branch. Disabled when the server is in read-only mode or the operation is not enabled.")]
+    public static async Task<string> CreatePullRequest(
+        AzureDevOpsService svc,
+        [Description("Repository id or name")] string repository,
+        [Description("PR title.")] string title,
+        [Description("Source branch with the changes, e.g. 'feature/x' or 'refs/heads/feature/x'.")] string sourceBranch,
+        [Description("Target branch to merge into, e.g. 'main' or 'refs/heads/main'.")] string targetBranch,
+        [Description("Optional description / body.")] string? description = null,
+        [Description("Create as a draft PR (default false).")] bool isDraft = false,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        CancellationToken ct = default)
+    {
+        svc.EnsureWriteAllowed("create_pull_request");
+        if (string.IsNullOrWhiteSpace(title)) throw new ArgumentException("title is required.", nameof(title));
+        if (string.IsNullOrWhiteSpace(sourceBranch)) throw new ArgumentException("sourceBranch is required.", nameof(sourceBranch));
+        if (string.IsNullOrWhiteSpace(targetBranch)) throw new ArgumentException("targetBranch is required.", nameof(targetBranch));
+
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<GitHttpClient>();
+        var pr = new GitPullRequest
+        {
+            Title = title,
+            Description = description,
+            SourceRefName = ToRef(sourceBranch),
+            TargetRefName = ToRef(targetBranch),
+            IsDraft = isDraft,
+        };
+
+        try
+        {
+            var created = await client.CreatePullRequestAsync(pr, resolved, repository, cancellationToken: ct);
+            return JsonSerializer.Serialize(new
+            {
+                created.PullRequestId,
+                created.Title,
+                Status = created.Status.ToString(),
+                created.SourceRefName,
+                created.TargetRefName,
+                created.IsDraft,
+                created.Url,
+            }, JsonOpts.Default);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"create_pull_request failed in '{resolved}/{repository}': {ex.Message}. " +
+                "Common causes: source or target branch does not exist; an active PR already exists for this source→target; " +
+                "PAT lacks 'Code (read & write)' / 'Pull Request Contribute'.", ex);
+        }
+    }
+
+    private static string ToRef(string branch) =>
+        branch.StartsWith("refs/", StringComparison.OrdinalIgnoreCase) ? branch : $"refs/heads/{branch}";
+
     [McpServerTool(Name = "azdo_create_repository"),
      Description("Create a new empty Git repository in a project. Disabled when the server is in read-only mode or the operation is not enabled.")]
     public static async Task<string> CreateRepository(

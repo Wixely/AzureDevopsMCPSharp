@@ -154,6 +154,8 @@ All write operations ship **disabled by default** in `AzureDevopsMCPSharp.json`.
 | `azdo_set_bypass_push_policy_user` | Same, scoped to a single user (email / account / display name) | |
 | `azdo_set_pull_request_vote` | Set the caller's vote on a PR (approve / approve-with-suggestions / no-vote / waiting-for-author / reject) | |
 | `azdo_add_pull_request_comment` | Add a comment to a PR (new thread, or reply into a given `threadId`) | |
+| `azdo_create_pull_request` | Create a pull request (source → target branch) | |
+| `azdo_complete_pull_request` | Complete (merge) a PR — noFastForward / squash / rebase / rebaseMerge | Optional delete source branch, bypass policy. |
 | `azdo_abandon_pull_request` | Mark a PR as Abandoned (AzDO equivalent of 'deny/cancel') | Reversible via `azdo_reactivate_pull_request`. |
 | `azdo_reactivate_pull_request` | Set an abandoned PR back to Active | |
 
@@ -168,11 +170,15 @@ Override individual switches via env var, e.g. `AZDOMCP_AzureDevOps__Operations_
 Full PR review surface:
 
 - **View**: `azdo_list_pull_requests`, `azdo_get_pull_request`, `azdo_list_pull_request_iterations`, `azdo_list_pull_request_changes` (per-iteration file changes), `azdo_get_pull_request_diff` (source-vs-target commit diff), `azdo_get_pull_request_file` (file content at the source-branch commit), `azdo_list_pull_request_reviewers` (with current votes), `azdo_list_pull_request_threads` (review threads + comments), `azdo_list_pull_request_work_items`, `azdo_get_pull_request_policy_evaluations` (build validation, required reviewers, …).
+- **Create**: `azdo_create_pull_request` (title, source → target branch, optional description, `isDraft`).
 - **Decide**: `azdo_set_pull_request_vote` sets the caller's vote — `approve`, `approve-with-suggestions`, `no-vote`, `waiting-for-author`, or `reject` (AzDO's "deny").
 - **Discuss**: `azdo_add_pull_request_comment` opens a new thread or replies into an existing one by `threadId`.
+- **Complete**: `azdo_complete_pull_request` (`mergeStrategy` = noFastForward / squash / rebase / rebaseMerge, optional `deleteSourceBranch`, `bypassPolicy`).
 - **Cancel**: `azdo_abandon_pull_request`; `azdo_reactivate_pull_request` to undo.
 
-All decide/discuss/cancel tools require both `AzureDevOps:ReadOnly=false` AND the per-operation switch (`AzureDevOps:Operations:<tool_name>=true`).
+All create/decide/discuss/complete/cancel tools require both `AzureDevOps:ReadOnly=false` AND the per-operation switch (`AzureDevOps:Operations:<tool_name>=true`).
+
+The create → review → comment → approve → complete lifecycle is unified across the GitHub, Azure DevOps and GitLab MCP servers (see each server's README).
 
 ## Pipelines / CI
 

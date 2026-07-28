@@ -28,6 +28,8 @@
       "set_bypass_push_policy_user": false,
       "set_pull_request_vote": false,
       "add_pull_request_comment": false,
+      "add_pull_request_review_comment": false,
+      "request_pull_request_reviewers": false,
       "create_pull_request": false,
       "complete_pull_request": false,
       "bypass_pull_request_policy": false,

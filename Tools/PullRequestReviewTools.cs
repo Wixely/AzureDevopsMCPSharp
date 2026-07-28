@@ -309,7 +309,7 @@ public static class PullRequestReviewTools
             {
                 Comments = new List<Comment>
                 {
-                    new() { ParentCommentId = 0, Content = body, CommentType = CommentType.Text },
+                    new() { ParentCommentId = 0, Content = TextUtil.NormalizeNewlines(body), CommentType = CommentType.Text },
                 },
                 Status = CommentThreadStatus.Active,
             };
@@ -318,10 +318,129 @@ public static class PullRequestReviewTools
         }
         else
         {
-            var comment = new Comment { ParentCommentId = 0, Content = body, CommentType = CommentType.Text };
+            var comment = new Comment { ParentCommentId = 0, Content = TextUtil.NormalizeNewlines(body), CommentType = CommentType.Text };
             var created = await client.CreateCommentAsync(comment, resolved, repository, pullRequestId, threadId, cancellationToken: ct);
             return JsonSerializer.Serialize(new { threadId, commentId = created.Id }, JsonOpts.Default);
         }
+    }
+
+    [McpServerTool(Name = "azdo_add_pull_request_review_comment"),
+     Description("Add an inline review comment anchored to a file and line in a PR, as a new comment thread. Set side to right (the new/updated file, default) or left (the old file), and startLine to make it a multi-line range. The body supports markdown. Requires write mode and operation enabled.")]
+    public static async Task<string> AddReviewComment(
+        AzureDevOpsService svc,
+        [Description("Repository id or name")] string repository,
+        [Description("Pull request id")] int pullRequestId,
+        [Description("File path inside the repository (e.g. /src/Foo.cs). A leading '/' is added if missing.")] string path,
+        [Description("Comment body markdown.")] string body,
+        [Description("Line number in the file to anchor the comment to.")] int line,
+        [Description("Diff side: right (new file, default) or left (old file).")] string side = "right",
+        [Description("For a multi-line comment, the first line of the range (must be <= line).")] int? startLine = null,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        CancellationToken ct = default)
+    {
+        svc.EnsureWriteAllowed("add_pull_request_review_comment");
+        if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("path is required.", nameof(path));
+        if (line <= 0) throw new ArgumentException("line must be a positive line number.", nameof(line));
+
+        var normalizedSide = side.ToLowerInvariant();
+        if (normalizedSide is not ("left" or "right"))
+            throw new ArgumentException($"Unknown side '{side}'. Expected 'left' or 'right'.", nameof(side));
+
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<GitHttpClient>();
+
+        var filePath = path.StartsWith('/') ? path : "/" + path;
+        var firstLine = startLine ?? line;
+        if (firstLine > line) throw new ArgumentException("startLine must be <= line.", nameof(startLine));
+
+        var start = new CommentPosition { Line = firstLine, Offset = 1 };
+        var end = new CommentPosition { Line = line, Offset = 1 };
+        var context = new CommentThreadContext { FilePath = filePath };
+        if (normalizedSide == "left")
+        {
+            context.LeftFileStart = start;
+            context.LeftFileEnd = end;
+        }
+        else
+        {
+            context.RightFileStart = start;
+            context.RightFileEnd = end;
+        }
+
+        var thread = new GitPullRequestCommentThread
+        {
+            Comments = new List<Comment>
+            {
+                new() { ParentCommentId = 0, Content = TextUtil.NormalizeNewlines(body), CommentType = CommentType.Text },
+            },
+            Status = CommentThreadStatus.Active,
+            ThreadContext = context,
+        };
+        var created = await client.CreateThreadAsync(thread, resolved, repository, pullRequestId, cancellationToken: ct);
+        return JsonSerializer.Serialize(new
+        {
+            threadId = created.Id,
+            commentId = created.Comments?.FirstOrDefault()?.Id,
+            filePath,
+            side = normalizedSide,
+            line,
+            startLine = firstLine,
+        }, JsonOpts.Default);
+    }
+
+    [McpServerTool(Name = "azdo_request_pull_request_reviewers"),
+     Description("Request one or more reviewers on a PR — i.e. formally request a code review. Each reviewer may be an identity id (GUID) or a search string (email / unique name / display name), which is resolved via the Identity API. Set required=true to add them as required reviewers. Requires write mode and operation enabled.")]
+    public static async Task<string> RequestReviewers(
+        AzureDevOpsService svc,
+        [Description("Repository id or name")] string repository,
+        [Description("Pull request id")] int pullRequestId,
+        [Description("Reviewers: identity ids (GUID) or search strings (email / unique name / display name).")] string[] reviewers,
+        [Description("Add them as required reviewers (default false = optional).")] bool required = false,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        CancellationToken ct = default)
+    {
+        svc.EnsureWriteAllowed("request_pull_request_reviewers");
+        if (reviewers is null || reviewers.Length == 0)
+            throw new ArgumentException("Provide at least one reviewer.", nameof(reviewers));
+
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<GitHttpClient>();
+
+        var results = new List<object>();
+        foreach (var query in reviewers)
+        {
+            var id = await ResolveIdentityIdAsync(svc, query, ct);
+            var reviewer = new IdentityRefWithVote { Id = id, IsRequired = required };
+            var added = await client.CreatePullRequestReviewerAsync(reviewer, resolved, repository, pullRequestId, id, cancellationToken: ct);
+            results.Add(new { query, id, added.DisplayName, added.IsRequired });
+        }
+        return JsonSerializer.Serialize(new { pullRequestId, required, reviewers = results }, JsonOpts.Default);
+    }
+
+    /// <summary>Resolve a reviewer search string to an Azure DevOps identity id; passes GUIDs through unchanged.</summary>
+    private static async Task<string> ResolveIdentityIdAsync(AzureDevOpsService svc, string query, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            throw new ArgumentException("Reviewer value cannot be empty.");
+        if (Guid.TryParse(query, out _)) return query;
+
+        var url = $"_apis/identities?searchFilter=General&filterValue={Uri.EscapeDataString(query)}&queryMembership=None&api-version=6.0";
+        using var resp = await svc.RestClient.GetAsync(url, ct);
+        var payload = await resp.Content.ReadAsStringAsync(ct);
+        if (!resp.IsSuccessStatusCode)
+            throw new InvalidOperationException(
+                $"Could not resolve reviewer '{query}': identity lookup returned {(int)resp.StatusCode}. " +
+                "Pass the reviewer's identity id (GUID) directly if identity search is unavailable on this server.\n" + payload);
+
+        using var doc = JsonDocument.Parse(payload);
+        if (doc.RootElement.TryGetProperty("value", out var value) && value.ValueKind == JsonValueKind.Array && value.GetArrayLength() > 0)
+        {
+            var first = value[0];
+            if (first.TryGetProperty("id", out var idProp) && idProp.GetString() is { Length: > 0 } id)
+                return id;
+        }
+        throw new InvalidOperationException(
+            $"No Azure DevOps identity matched reviewer '{query}'. Try a more specific email / unique name, or pass the identity id (GUID) directly.");
     }
 
     [McpServerTool(Name = "azdo_complete_pull_request"),
@@ -374,7 +493,7 @@ public static class PullRequestReviewTools
             {
                 MergeStrategy = strategy,
                 DeleteSourceBranch = deleteSourceBranch,
-                MergeCommitMessage = mergeCommitMessage,
+                MergeCommitMessage = TextUtil.NormalizeNewlines(mergeCommitMessage),
                 BypassPolicy = bypassPolicy,
                 // Only meaningful when bypassing; recorded on the PR's policy-override audit entry.
                 BypassReason = bypassPolicy ? bypassReason : null,

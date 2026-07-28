@@ -154,6 +154,8 @@ All write operations ship **disabled by default** in `AzureDevopsMCPSharp.json`.
 | `azdo_set_bypass_push_policy_user` | Same, scoped to a single user (email / account / display name) | |
 | `azdo_set_pull_request_vote` | Set the caller's vote on a PR (approve / approve-with-suggestions / no-vote / waiting-for-author / reject) | |
 | `azdo_add_pull_request_comment` | Add a comment to a PR (new thread, or reply into a given `threadId`) | |
+| `azdo_add_pull_request_review_comment` | Add an inline review comment anchored to a file + line | Multi-line via `startLine`; `left`/`right` side. |
+| `azdo_request_pull_request_reviewers` | Request reviewers on a PR (optional `required`) | Resolves emails / unique names via the Identity API. |
 | `azdo_create_pull_request` | Create a pull request (source → target branch) | |
 | `azdo_complete_pull_request` | Complete (merge) a PR — noFastForward / squash / rebase / rebaseMerge | Optional delete source branch. |
 | `bypass_pull_request_policy` | Allow `azdo_complete_pull_request` to override unmet branch policies (`bypassPolicy=true`) | Gates the override only; the AzDO 'Bypass policies when completing' permission is still enforced server-side. |
@@ -172,12 +174,15 @@ Full PR review surface:
 
 - **View**: `azdo_list_pull_requests`, `azdo_get_pull_request`, `azdo_list_pull_request_iterations`, `azdo_list_pull_request_changes` (per-iteration file changes), `azdo_get_pull_request_diff` (source-vs-target commit diff), `azdo_get_pull_request_file` (file content at the source-branch commit), `azdo_list_pull_request_reviewers` (with current votes), `azdo_list_pull_request_threads` (review threads + comments), `azdo_list_pull_request_work_items`, `azdo_get_pull_request_policy_evaluations` (build validation, required reviewers, …).
 - **Create**: `azdo_create_pull_request` (title, source → target branch, optional description, `isDraft`).
+- **Request review**: `azdo_request_pull_request_reviewers` (identity ids, or emails / unique names / display names resolved via the Identity API; optional `required`).
 - **Decide**: `azdo_set_pull_request_vote` sets the caller's vote — `approve`, `approve-with-suggestions`, `no-vote`, `waiting-for-author`, or `reject` (AzDO's "deny").
-- **Discuss**: `azdo_add_pull_request_comment` opens a new thread or replies into an existing one by `threadId`.
+- **Discuss**: `azdo_add_pull_request_comment` opens a new thread or replies into an existing one by `threadId`; `azdo_add_pull_request_review_comment` anchors a new thread to a file + `line`/`side` (multi-line via `startLine`; markdown supported).
 - **Complete**: `azdo_complete_pull_request` (`mergeStrategy` = noFastForward / squash / rebase / rebaseMerge, optional `deleteSourceBranch`). Set `bypassPolicy=true` with a `bypassReason` to **override branch policies** (unmet approvals / required reviewers / checks) — the equivalent of "Override branch policies and enable merge" in the UI. This needs the caller's PAT/identity to hold the *Bypass policies when completing pull requests* permission **and** the separate `bypass_pull_request_policy` operation switch to be enabled (on top of `complete_pull_request`).
 - **Cancel**: `azdo_abandon_pull_request`; `azdo_reactivate_pull_request` to undo.
 
 All create/decide/discuss/complete/cancel tools require both `AzureDevOps:ReadOnly=false` AND the per-operation switch (`AzureDevOps:Operations:<tool_name>=true`).
+
+> **Line breaks:** PR descriptions and comment bodies accept markdown. If a caller sends literal `\n` escape sequences instead of real line breaks (a common mistake) and the text has no real newlines, the server converts them to actual line breaks so the content renders correctly. Text that already contains real newlines is left untouched.
 
 The create → review → comment → approve → complete lifecycle is unified across the GitHub, Azure DevOps and GitLab MCP servers (see each server's README).
 

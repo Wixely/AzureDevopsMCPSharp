@@ -81,7 +81,7 @@ public static class GitTools
         var pr = new GitPullRequest
         {
             Title = title,
-            Description = description,
+            Description = TextUtil.NormalizeNewlines(description),
             SourceRefName = ToRef(sourceBranch),
             TargetRefName = ToRef(targetBranch),
             IsDraft = isDraft,

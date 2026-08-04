@@ -124,7 +124,17 @@ All write operations ship **disabled by default** in `AzureDevopsMCPSharp.json`.
     "set_min_reviewers_policy": false,
     "set_bypass_push_policy_self": false,
     "set_bypass_push_policy_group": false,
-    "set_bypass_push_policy_user": false
+    "set_bypass_push_policy_user": false,
+    "create_or_update_wiki_page": false,
+    "delete_wiki_page": false,
+    "move_wiki_page": false,
+    "create_wiki": false,
+    "update_wiki": false,
+    "delete_wiki": false,
+    "create_wiki_attachment": false,
+    "add_wiki_page_comment": false,
+    "update_wiki_page_comment": false,
+    "delete_wiki_page_comment": false
   }
 }
 ```
@@ -161,6 +171,16 @@ All write operations ship **disabled by default** in `AzureDevopsMCPSharp.json`.
 | `bypass_pull_request_policy` | Allow `azdo_complete_pull_request` to override unmet branch policies (`bypassPolicy=true`) | Gates the override only; the AzDO 'Bypass policies when completing' permission is still enforced server-side. |
 | `azdo_abandon_pull_request` | Mark a PR as Abandoned (AzDO equivalent of 'deny/cancel') | Reversible via `azdo_reactivate_pull_request`. |
 | `azdo_reactivate_pull_request` | Set an abandoned PR back to Active | |
+| `azdo_create_or_update_wiki_page` | Create or edit a project-wiki page (Markdown) | Editing uses ETag/If-Match concurrency. Project wikis only. |
+| `azdo_delete_wiki_page` | **Permanently** delete a wiki page | No undo. Project wikis only. |
+| `azdo_move_wiki_page` | Move / rename a wiki page and its sub-pages | Project wikis only. |
+| `azdo_create_wiki` | Create a project wiki, or publish a Git folder as a code wiki | |
+| `azdo_update_wiki` | Rename a wiki | |
+| `azdo_delete_wiki` | **Permanently** delete / unpublish a wiki | Code wiki: unpublishes only (repo untouched). Project wiki: deletes pages. |
+| `azdo_create_wiki_attachment` | Upload a binary attachment (e.g. an image) to a wiki | Content is base64. |
+| `azdo_add_wiki_page_comment` | Add a comment to a wiki page (optionally a reply) | |
+| `azdo_update_wiki_page_comment` | Edit a wiki page comment | |
+| `azdo_delete_wiki_page_comment` | Delete a wiki page comment | |
 
 When a tool is called but its operation is not explicitly enabled, the server throws a clear error naming the exact setting to flip:
 
@@ -185,6 +205,31 @@ All create/decide/discuss/complete/cancel tools require both `AzureDevOps:ReadOn
 > **Line breaks:** PR descriptions and comment bodies accept markdown. If a caller sends literal `\n` escape sequences instead of real line breaks (a common mistake) and the text has no real newlines, the server converts them to actual line breaks so the content renders correctly. Text that already contains real newlines is left untouched.
 
 The create → review → comment → approve → complete lifecycle is unified across the GitHub, Azure DevOps and GitLab MCP servers (see each server's README).
+
+## Wiki
+
+Read and edit the wiki built into Azure DevOps.
+
+**Reads** (no per-operation switch needed):
+
+- `azdo_list_wikis` — project + code wikis with their type/repo mapping; `azdo_get_wiki` — one wiki by name/GUID.
+- `azdo_list_wiki_pages` — the page tree (paths only); `azdo_get_wiki_page` — one page's Markdown content, its page **Id** and its **ETag** (large content is truncated at ~50 KB with a `truncated` flag).
+- `azdo_get_wiki_attachment` — download an attachment by name (returned as base64; large files rejected).
+- `azdo_list_wiki_page_comments` — comments on a page (by page id); `azdo_get_wiki_page_stats` — page view counts over the last N days (by page id).
+- `azdo_search_wiki` — full-text search across pages. **Needs the Azure DevOps Server 'Search' extension** installed/configured on the collection; when it isn't, the tool returns `{ "available": false, ... }` rather than erroring.
+
+**Writes** (require `ReadOnly=false` **and** the matching per-operation switch):
+
+- Pages: `azdo_create_or_update_wiki_page` (create/edit), `azdo_delete_wiki_page`, `azdo_move_wiki_page` (move/rename a page and its sub-pages).
+- Wikis: `azdo_create_wiki` (project wiki, or publish a Git folder as a code wiki), `azdo_update_wiki` (rename), `azdo_delete_wiki`.
+- Attachments: `azdo_create_wiki_attachment` (upload base64 content, e.g. an image, and get back the path to embed in Markdown).
+- Comments: `azdo_add_wiki_page_comment` (optionally a reply via `parentCommentId`), `azdo_update_wiki_page_comment`, `azdo_delete_wiki_page_comment`.
+
+Page editing is guarded by optimistic concurrency (ETag / If-Match): a **create** sends no ETag, an **update** must send the page's current ETag. `azdo_get_wiki_page` returns it, and `azdo_create_or_update_wiki_page` accepts an optional `etag` — if omitted it auto-probes the current value, and it returns the **new** ETag so an agent can chain consecutive edits. A stale ETag yields a clear "page changed on the server, re-read and retry" error (HTTP 412). `wikiIdentifier` accepts either the wiki **name** or its **GUID**; page paths start with `/` (e.g. `/Home`, `/Folder/Page`). Comment and stats tools take the numeric **page id** from `azdo_get_wiki_page`.
+
+Page create/update/delete/move target **project wikis**. Code wikis are Git-backed, so page edits there go through the backing repo's commit flow — use the Git repo tools for those (`azdo_create_wiki` / `azdo_delete_wiki` still manage the code-wiki publication itself).
+
+**PAT scopes:** reading needs **Wiki (Read)**; create/update/delete/move and attachments/comments need **Wiki (Read & Write)**. Search additionally depends on the Search extension being installed.
 
 ## Pipelines / CI
 

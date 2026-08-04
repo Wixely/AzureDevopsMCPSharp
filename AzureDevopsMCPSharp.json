@@ -34,7 +34,17 @@
       "complete_pull_request": false,
       "bypass_pull_request_policy": false,
       "abandon_pull_request": false,
-      "reactivate_pull_request": false
+      "reactivate_pull_request": false,
+      "create_or_update_wiki_page": false,
+      "delete_wiki_page": false,
+      "move_wiki_page": false,
+      "create_wiki": false,
+      "update_wiki": false,
+      "delete_wiki": false,
+      "create_wiki_attachment": false,
+      "add_wiki_page_comment": false,
+      "update_wiki_page_comment": false,
+      "delete_wiki_page_comment": false
     }
   },
   "Server": {

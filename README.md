@@ -188,6 +188,37 @@ When a tool is called but its operation is not explicitly enabled, the server th
 
 Override individual switches via env var, e.g. `AZDOMCP_AzureDevOps__Operations__delete_pipeline=true`.
 
+## Work items
+
+Work item types differ from collection to collection: a customised type can require fields
+that stock types do not, and picklist fields only accept their declared values. Two read-only
+tools expose that schema so a payload can be built against the live definition rather than
+guesswork:
+
+- `azdo_list_work_item_types` — the types available in a project.
+- `azdo_get_work_item_type_fields` — every field on a type: reference name, `alwaysRequired`,
+  default value, help text, and `allowedValues` for picklists. Pass `requiredOnly: true` to
+  narrow it to the fields the type insists on.
+
+`azdo_create_work_item` takes `title` and `description` directly; everything else goes in
+`fields`, keyed by field reference name — area and iteration paths, plus any custom fields the
+type requires:
+
+```json
+{
+  "type": "Bug",
+  "title": "Login page returns 500",
+  "fields": {
+    "System.AreaPath": "MyProject\Web",
+    "System.IterationPath": "MyProject\Sprint 12",
+    "Microsoft.VSTS.Common.Priority": "1"
+  }
+}
+```
+
+Creating a work item without a required field fails server-side, so query the type first when
+the type is unfamiliar. `azdo_update_work_item` takes the same `fields` shape.
+
 ## Pull request review
 
 Full PR review surface:

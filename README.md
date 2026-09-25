@@ -115,6 +115,9 @@ All write operations ship **disabled by default** in `AzureDevopsMCPSharp.json`.
     "authorize_pipeline_resource": false,
     "create_work_item": false,
     "update_work_item": false,
+    "add_work_item_relation": false,
+    "remove_work_item_relation": false,
+    "add_work_item_attachment": false,
     "create_repository": false,
     "rename_repository": false,
     "delete_repository": false,
@@ -152,6 +155,9 @@ All write operations ship **disabled by default** in `AzureDevopsMCPSharp.json`.
 | `azdo_authorize_pipeline_resource` | Grant a pipeline permission to use a protected resource | |
 | `azdo_create_work_item` | Create a work item | |
 | `azdo_update_work_item` | Patch fields on a work item | |
+| `azdo_add_work_item_relation` | Link a work item to another work item, PR, branch, commit, build or URL | |
+| `azdo_remove_work_item_relation` | Remove a link from a work item | |
+| `azdo_add_work_item_attachment` | Upload a file and attach it to a work item | |
 | `azdo_create_repository` | Create a new empty Git repository | |
 | `azdo_rename_repository` | Rename a Git repository | |
 | `azdo_delete_repository` | **Permanently** delete a Git repository | No undo. Wipes branches, history, PRs. |
@@ -218,6 +224,57 @@ type requires:
 
 Creating a work item without a required field fails server-side, so query the type first when
 the type is unfamiliar. `azdo_update_work_item` takes the same `fields` shape.
+
+### Relations (links and attachments)
+
+Fields are only half a work item; the other half is its *relations* — links to other work items,
+to the PR or branch that implements it, to the commit that fixed it, and to attached files.
+
+- `azdo_list_work_item_relations` — every relation with its **index**, `rel`, url, `name`/`comment`
+  attributes, and the target work item id where the link points at one. (`azdo_get_work_item` with
+  `includeRelations: true` returns the same links raw, without indices.)
+- `azdo_add_work_item_relation` — add one link.
+- `azdo_remove_work_item_relation` — remove one, by `index` or by exact `url`.
+- `azdo_add_work_item_attachment` — upload a file (base64) and attach it in one call.
+
+`relation` takes a shorthand rather than a reference name, and which other parameter you pass
+follows from it:
+
+| `relation` | Target parameter(s) | Link type |
+| --- | --- | --- |
+| `related` | `targetWorkItemId` | `System.LinkTypes.Related` |
+| `parent` / `child` | `targetWorkItemId` | `System.LinkTypes.Hierarchy-Reverse` / `-Forward` |
+| `duplicate` / `duplicate-of` | `targetWorkItemId` | `System.LinkTypes.Duplicate-Forward` / `-Reverse` |
+| `successor` / `predecessor` | `targetWorkItemId` | `System.LinkTypes.Dependency-Forward` / `-Reverse` |
+| `tested-by` / `tests` | `targetWorkItemId` | `Microsoft.VSTS.Common.TestedBy-Forward` / `-Reverse` |
+| `pull-request` | `pullRequestId` + `repository` | `ArtifactLink` ("Pull Request") |
+| `branch` | `branch` + `repository` | `ArtifactLink` ("Branch") |
+| `commit` | `commitSha` + `repository` | `ArtifactLink` ("Fixed in Commit") |
+| `build` / `found-in-build` / `integrated-in-build` | `buildId` | `ArtifactLink` |
+| `hyperlink` | `url` | `Hyperlink` |
+
+The artifact-link kinds build the `vstfs:///Git/...` URI for you from the repository's project and
+repo GUIDs, so callers pass the repository by **name** and the PR/branch/commit by its ordinary
+identifier:
+
+```json
+{
+  "id": 4211,
+  "relation": "pull-request",
+  "repository": "MyApp",
+  "pullRequestId": 873,
+  "comment": "Implemented by this PR"
+}
+```
+
+An unrecognised `relation` is passed through as a raw link type reference name
+(`System.LinkTypes.Related`, a custom process's own link type, …), so uncommon types stay reachable;
+those need `targetWorkItemId`, or an explicit `url` for a raw `ArtifactLink`/`Hyperlink`.
+
+Adding a link that already exists is a **no-op** — the tool returns `unchanged: true` instead of
+the duplicate-relation error Azure DevOps would raise, so a retrying caller converges. Removal
+sends a `test` on the work item's `rev` alongside the remove, so a stale index fails the update
+rather than silently deleting a different link.
 
 ## Pull request review
 

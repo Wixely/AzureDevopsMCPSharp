@@ -388,6 +388,82 @@ public static class PullRequestReviewTools
         }, JsonOpts.Default);
     }
 
+    [McpServerTool(Name = "azdo_set_pull_request_thread_status"),
+     Description("Set the status of a PR comment thread, e.g. resolve it. Status values: active, fixed (UI 'Resolved'), wontFix, closed, byDesign, pending. UI labels such as 'resolved' and \"won't fix\" are accepted too. threadId comes from azdo_list_pull_request_threads or the add-comment tools. Requires write mode and operation enabled.")]
+    public static async Task<string> SetThreadStatus(
+        AzureDevOpsService svc,
+        [Description("Repository id or name")] string repository,
+        [Description("Pull request id")] int pullRequestId,
+        [Description("Thread id")] int threadId,
+        [Description("Status: active, fixed (resolved), wontFix, closed, byDesign, pending.")] string status,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        CancellationToken ct = default)
+    {
+        svc.EnsureWriteAllowed("set_pull_request_thread_status");
+        if (threadId <= 0) throw new ArgumentException("threadId must be a positive thread id.", nameof(threadId));
+        var statusValue = ParseThreadStatus(status);
+
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<GitHttpClient>();
+
+        // Only Status is set, so the PATCH body carries just { "status": ... }.
+        var patch = new GitPullRequestCommentThread { Status = statusValue };
+        var updated = await client.UpdateThreadAsync(patch, resolved, repository, pullRequestId, threadId, cancellationToken: ct);
+        return JsonSerializer.Serialize(new { threadId = updated.Id, Status = updated.Status.ToString() }, JsonOpts.Default);
+    }
+
+    [McpServerTool(Name = "azdo_update_pull_request_comment"),
+     Description("Edit the text of an existing PR comment. threadId and commentId come from azdo_list_pull_request_threads or the add-comment tools. Requires write mode and operation enabled.")]
+    public static async Task<string> UpdateComment(
+        AzureDevOpsService svc,
+        [Description("Repository id or name")] string repository,
+        [Description("Pull request id")] int pullRequestId,
+        [Description("Thread id")] int threadId,
+        [Description("Comment id to edit")] int commentId,
+        [Description("New comment body markdown.")] string body,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        CancellationToken ct = default)
+    {
+        svc.EnsureWriteAllowed("update_pull_request_comment");
+        if (threadId <= 0) throw new ArgumentException("threadId must be a positive thread id.", nameof(threadId));
+        if (commentId <= 0) throw new ArgumentException("commentId must be a positive comment id.", nameof(commentId));
+
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<GitHttpClient>();
+
+        // Only Content is set, so the PATCH body carries just { "content": ... }.
+        var patch = new Comment { Content = TextUtil.NormalizeNewlines(body) };
+        var updated = await client.UpdateCommentAsync(patch, resolved, repository, pullRequestId, threadId, commentId, cancellationToken: ct);
+        return JsonSerializer.Serialize(new
+        {
+            threadId,
+            commentId = updated.Id,
+            updated.Content,
+            updated.LastUpdatedDate,
+        }, JsonOpts.Default);
+    }
+
+    [McpServerTool(Name = "azdo_delete_pull_request_comment"),
+     Description("Delete a comment from a PR thread. threadId and commentId come from azdo_list_pull_request_threads or the add-comment tools. Requires write mode and operation enabled.")]
+    public static async Task<string> DeleteComment(
+        AzureDevOpsService svc,
+        [Description("Repository id or name")] string repository,
+        [Description("Pull request id")] int pullRequestId,
+        [Description("Thread id")] int threadId,
+        [Description("Comment id to delete")] int commentId,
+        [Description("Project name (optional, falls back to DefaultProject)")] string? project = null,
+        CancellationToken ct = default)
+    {
+        svc.EnsureWriteAllowed("delete_pull_request_comment");
+        if (threadId <= 0) throw new ArgumentException("threadId must be a positive thread id.", nameof(threadId));
+        if (commentId <= 0) throw new ArgumentException("commentId must be a positive comment id.", nameof(commentId));
+
+        var resolved = svc.ResolveProject(project);
+        var client = svc.GetClient<GitHttpClient>();
+        await client.DeleteCommentAsync(resolved, repository, pullRequestId, threadId, commentId, cancellationToken: ct);
+        return JsonSerializer.Serialize(new { pullRequestId, threadId, commentId, deleted = true }, JsonOpts.Default);
+    }
+
     [McpServerTool(Name = "azdo_request_pull_request_reviewers"),
      Description("Request one or more reviewers on a PR — i.e. formally request a code review. Each reviewer may be an identity id (GUID) or a search string (email / unique name / display name), which is resolved via the Identity API. Set required=true to add them as required reviewers. Requires write mode and operation enabled.")]
     public static async Task<string> RequestReviewers(
@@ -569,6 +645,24 @@ public static class PullRequestReviewTools
         _ => throw new ArgumentException(
             $"Unknown vote '{value}'. Expected: approve, approve-with-suggestions, no-vote, waiting-for-author, reject.", nameof(value)),
     };
+
+    // CommentThreadStatus values plus the labels the web UI shows for them. Separators are
+    // stripped first, so "wontFix", "wont-fix", "won't fix" and "Won't Fix" all match.
+    private static CommentThreadStatus ParseThreadStatus(string value)
+    {
+        var key = new string((value ?? string.Empty).Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+        return key switch
+        {
+            "active" or "reactivate" or "1" => CommentThreadStatus.Active,
+            "fixed" or "resolved" or "resolve" or "2" => CommentThreadStatus.Fixed,
+            "wontfix" or "3" => CommentThreadStatus.WontFix,
+            "closed" or "close" or "4" => CommentThreadStatus.Closed,
+            "bydesign" or "5" => CommentThreadStatus.ByDesign,
+            "pending" or "6" => CommentThreadStatus.Pending,
+            _ => throw new ArgumentException(
+                $"Unknown thread status '{value}'. Expected: active, fixed (resolved), wontFix, closed, byDesign, pending.", nameof(value)),
+        };
+    }
 
     private static string VoteToText(short vote) => vote switch
     {
